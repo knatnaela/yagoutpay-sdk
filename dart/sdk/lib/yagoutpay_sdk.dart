@@ -62,7 +62,7 @@ class TransactionDetails {
     required this.failureUrl,
     required this.channel,
     this.customerEmail,
-    this.customerMobile,
+    required this.customerMobile,
     this.isLoggedIn,
   });
 }

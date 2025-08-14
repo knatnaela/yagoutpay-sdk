@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:yagoutpay_sdk/yagoutpay_sdk.dart';
@@ -88,6 +86,19 @@ class _YagoutCheckoutPageState extends State<YagoutCheckoutPage> {
               onLoadHttpError: (controller, url, statusCode, description) {
                 print('WebView HTTP error: $statusCode - $description');
               },
+              onReceivedServerTrustAuthRequest: (controller, challenge) async {
+                final host = challenge.protectionSpace.host;
+                // WARNING: Test-only bypass for UAT; do NOT use in production
+                if (host == 'uatcheckout.yagoutpay.com') {
+                  print('Bypassing SSL trust for host: $host (UAT only)');
+                  return ServerTrustAuthResponse(
+                    action: ServerTrustAuthResponseAction.PROCEED,
+                  );
+                }
+                return ServerTrustAuthResponse(
+                  action: ServerTrustAuthResponseAction.CANCEL,
+                );
+              },
               shouldOverrideUrlLoading: (controller, nav) async {
                 final url = nav.request.url?.toString() ?? '';
                 print('Navigation attempt: $url');
@@ -95,7 +106,6 @@ class _YagoutCheckoutPageState extends State<YagoutCheckoutPage> {
                 // Check if we're navigating to the payment gateway
                 if (url.contains(widget.actionUrl) || url.contains('yagoutpay.com')) {
                   print('Navigating to payment gateway: $url');
-                  _formSubmitted = true;
                 }
 
                 if (url.contains('/success') || url.contains('/failure')) {
@@ -105,7 +115,7 @@ class _YagoutCheckoutPageState extends State<YagoutCheckoutPage> {
                     );
                   }
                 }
-                return NavigationActionPolicy.ALLOW;
+                return NavigationActionPolicy.CANCEL;
               },
             ),
     );

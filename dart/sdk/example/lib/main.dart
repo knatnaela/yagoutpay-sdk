@@ -51,6 +51,7 @@ class _BodyState extends State<_Body> {
                     aggregatorId: 'yagout',
                     merchantId: '202508080001',
                     orderNumber: 'ORDER123',
+                    customerMobile: '0923759362',
                     amount: '1',
                     country: 'ETH',
                     currency: 'ETB',
