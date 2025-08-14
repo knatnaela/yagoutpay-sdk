@@ -1,0 +1,20 @@
+{
+  "name": "@yagoutpay/demo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc -p .",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@yagoutpay/sdk": "file:../sdk",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "tsx": "^4.15.7",
+    "typescript": "^5.5.4"
+  }
+}
