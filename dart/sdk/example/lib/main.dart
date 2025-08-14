@@ -26,46 +26,13 @@ class _Body extends StatefulWidget {
 
 class _BodyState extends State<_Body> {
   String output = '';
+  String _actionUrl = '';
   String? _html;
   final GlobalKey _webViewKey = GlobalKey();
   @override
   void initState() {
     super.initState();
-    _run();
-  }
-
-  void _run() {
-    final details = TransactionDetails(
-      aggregatorId: 'yagout',
-      merchantId: '<MERCHANT_ID>',
-      orderNumber: 'ORDER${DateTime.now().millisecondsSinceEpoch}',
-      amount: '1',
-      country: 'ETH',
-      currency: 'ETB',
-      transactionType: 'SALE',
-      successUrl: '<SUCCESS_URL>',
-      failureUrl: '<FAILURE_URL>',
-      channel: 'WEB',
-      isLoggedIn: 'Y',
-    );
-    const key = '<ENCRYPTION_KEY_BASE64>';
-    final built = buildFormPayload(
-      details,
-      key,
-      actionUrl: '<ACTION_URL>',
-    );
-    setState(() {
-      output = [
-        'me_id: ${built.meId}',
-        'hash_input: ${built.hashInput}',
-        'hash_hex: ${built.hashHex}',
-        'hash: ${built.hash}',
-        'merchant_request (plain): ${built.merchantRequestPlain}',
-        'merchant_request (enc): ${built.merchantRequest}',
-        'actionUrl: ${built.actionUrl}',
-      ].join('\n');
-      _html = renderAutoSubmitForm(built);
-    });
+    _actionUrl = 'https://yagoutpay.com/api/v1/payment/yagout/checkout';
   }
 
   @override
@@ -87,7 +54,9 @@ class _BodyState extends State<_Body> {
                   key: _webViewKey,
                   initialData: InAppWebViewInitialData(
                     data: _html!,
-                    baseUrl: WebUri('<BASE_URL>'),
+                    baseUrl: WebUri(
+                      _actionUrl,
+                    ),
                     mimeType: 'text/html',
                     encoding: 'utf-8',
                   ),
@@ -111,38 +80,27 @@ class _BodyState extends State<_Body> {
           padding: const EdgeInsets.all(8),
           child: ElevatedButton(
             onPressed: () {
-              final details = TransactionDetails(
-                aggregatorId: 'yagout',
-                merchantId: '<MERCHANT_ID>',
-                orderNumber: 'ORDER${DateTime.now().millisecondsSinceEpoch}',
-                amount: '1',
-                country: 'ETH',
-                currency: 'ETB',
-                transactionType: 'SALE',
-                successUrl: '<SUCCESS_URL>',
-                failureUrl: '<FAILURE_URL>',
-                channel: 'WEB',
-                isLoggedIn: 'Y',
-              );
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => const YagoutCheckoutPage(
-                    encryptionKey: '<ENCRYPTION_KEY_BASE64>',
+                    encryptionKey:
+                        'IG3CNW5uNrUO2mU2htUOWb9rgXCF7XMAXmL63d7wNZo=',
                     details: TransactionDetails(
                       aggregatorId: 'yagout',
-                      merchantId: '<MERCHANT_ID>',
+                      merchantId: '202508080001',
                       orderNumber: 'ORDER123',
                       amount: '1',
                       country: 'ETH',
                       currency: 'ETB',
                       transactionType: 'SALE',
-                      successUrl: '<SUCCESS_URL>',
-                      failureUrl: '<FAILURE_URL>',
+                      successUrl: 'http://loca',
+                      failureUrl: 'http://local',
                       channel: 'WEB',
                       isLoggedIn: 'Y',
                     ),
-                    actionUrl: '<ACTION_URL>',
+                    actionUrl:
+                        'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/paymentRedirection/checksumGatewayPage',
                   ),
                 ),
               );
