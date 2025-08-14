@@ -32,83 +32,42 @@ class _BodyState extends State<_Body> {
   @override
   void initState() {
     super.initState();
-    _actionUrl = 'https://yagoutpay.com/api/v1/payment/yagout/checkout';
+    _actionUrl = 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/paymentRedirection/checksumGatewayPage';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(child: Text(output)),
-          ),
-        ),
-        const Divider(height: 1),
-        SizedBox(
-          height: 320,
-          child: _html == null
-              ? const Center(child: Text('Build payload to load WebView'))
-              : InAppWebView(
-                  key: _webViewKey,
-                  initialData: InAppWebViewInitialData(
-                    data: _html!,
-                    baseUrl: WebUri(
-                      _actionUrl,
-                    ),
-                    mimeType: 'text/html',
-                    encoding: 'utf-8',
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => YagoutCheckoutPage(
+                  encryptionKey: 'IG3CNW5uNrUO2mU2htUOWb9rgXCF7XMAXmL63d7wNZo=',
+                  details: TransactionDetails(
+                    aggregatorId: 'yagout',
+                    merchantId: '202508080001',
+                    orderNumber: 'ORDER123',
+                    amount: '1',
+                    country: 'ETH',
+                    currency: 'ETB',
+                    transactionType: 'SALE',
+                    successUrl: 'http://localhost:8080/success',
+                    failureUrl: 'http://localhost:8080/failure',
+                    channel: 'WEB',
+                    isLoggedIn: 'Y',
                   ),
-                  initialSettings:
-                      InAppWebViewSettings(javaScriptEnabled: true),
-                  shouldOverrideUrlLoading: (controller, nav) async {
-                    final url = nav.request.url?.toString() ?? '';
-                    if (url.contains('/success') || url.contains('/failure')) {
-                      // Handle callback URL in-app
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Callback: $url')),
-                        );
-                      }
-                    }
-                    return NavigationActionPolicy.ALLOW;
-                  },
+                  actionUrl: _actionUrl,
                 ),
+              ),
+            );
+          },
+          child: const Text('Open YagoutCheckoutPage'),
         ),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const YagoutCheckoutPage(
-                    encryptionKey:
-                        'IG3CNW5uNrUO2mU2htUOWb9rgXCF7XMAXmL63d7wNZo=',
-                    details: TransactionDetails(
-                      aggregatorId: 'yagout',
-                      merchantId: '202508080001',
-                      orderNumber: 'ORDER123',
-                      amount: '1',
-                      country: 'ETH',
-                      currency: 'ETB',
-                      transactionType: 'SALE',
-                      successUrl: 'http://loca',
-                      failureUrl: 'http://local',
-                      channel: 'WEB',
-                      isLoggedIn: 'Y',
-                    ),
-                    actionUrl:
-                        'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/paymentRedirection/checksumGatewayPage',
-                  ),
-                ),
-              );
-            },
-            child: const Text('Open YagoutCheckoutPage'),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

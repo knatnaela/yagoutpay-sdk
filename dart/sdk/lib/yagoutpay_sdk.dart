@@ -132,8 +132,7 @@ String buildMerchantRequestPlain(TransactionDetails d) {
 
   final pgDetails = _joinPipe(['', '', '', '']);
   final cardDetails = _joinPipe(['', '', '', '', '']);
-  final custDetails = _joinPipe(
-      ['', d.customerEmail, d.customerMobile, '', d.isLoggedIn ?? 'Y']);
+  final custDetails = _joinPipe(['', d.customerEmail, d.customerMobile, '', d.isLoggedIn ?? 'Y']);
   final billDetails = _joinPipe(['', '', '', '', '']);
   final shipDetails = _joinPipe(['', '', '', '', '', '', '']);
   final itemDetails = _joinPipe(['', '', '']);
@@ -155,12 +154,10 @@ String buildMerchantRequestPlain(TransactionDetails d) {
 
 /// Returns the canonical hash input:
 /// me_id~order_no~amount~country~currency
-String buildHashInput(TransactionDetails d) =>
-    [d.merchantId, d.orderNumber, d.amount, d.country, d.currency].join('~');
+String buildHashInput(TransactionDetails d) => [d.merchantId, d.orderNumber, d.amount, d.country, d.currency].join('~');
 
 /// Computes SHA-256 hex digest.
-String generateSha256Hex(String input) =>
-    dcrypto.sha256.convert(utf8.encode(input)).toString();
+String generateSha256Hex(String input) => dcrypto.sha256.convert(utf8.encode(input)).toString();
 
 /// Encrypts [plain] using AES-256-CBC with PKCS7 padding and static IV.
 /// [base64Key] is a 32-byte key encoded in base64.
@@ -168,8 +165,7 @@ String aes256CbcEncrypt(String plain, String base64Key) {
   final key = enc.Key.fromBase64(base64Key);
   final iv = enc.IV.fromUtf8('0123456789abcdef');
   final pad = _pkcs7Pad(utf8.encode(plain));
-  final encrypter =
-      enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc, padding: null));
+  final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc, padding: null));
   final encrypted = encrypter.encryptBytes(pad, iv: iv);
   return encrypted.base64;
 }
@@ -178,10 +174,8 @@ String aes256CbcEncrypt(String plain, String base64Key) {
 String aes256CbcDecrypt(String base64Cipher, String base64Key) {
   final key = enc.Key.fromBase64(base64Key);
   final iv = enc.IV.fromUtf8('0123456789abcdef');
-  final encrypter =
-      enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc, padding: null));
-  final bytes =
-      encrypter.decryptBytes(enc.Encrypted.fromBase64(base64Cipher), iv: iv);
+  final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.cbc, padding: null));
+  final bytes = encrypter.decryptBytes(enc.Encrypted.fromBase64(base64Cipher), iv: iv);
   final unpadded = _pkcs7Unpad(bytes);
   return utf8.decode(unpadded);
 }
@@ -212,6 +206,15 @@ BuiltRequest buildFormPayload(
   final hashInput = buildHashInput(d);
   final hashHex = generateSha256Hex(hashInput);
   final hash = aes256CbcEncrypt(hashHex, encryptionKey);
+
+  // Debug logging
+  print('Building form payload:');
+  print('  Plain merchant request: $plain');
+  print('  Hash input: $hashInput');
+  print('  Hash hex: $hashHex');
+  print('  Action URL: $actionUrl');
+  print('  Merchant ID: ${d.merchantId}');
+
   return BuiltRequest(
     meId: d.merchantId,
     merchantRequestPlain: plain,
@@ -232,14 +235,103 @@ String renderAutoSubmitForm(BuiltRequest b) {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#39;');
 
-  return '<!doctype html>'
-      '<html><head><meta charset="utf-8" /><title>Redirecting…</title></head>'
-      '<body onload="document.forms[0].submit()">'
-      '<form method="POST" action="${esc(b.actionUrl)}" enctype="application/x-www-form-urlencoded">'
-      '<input type="hidden" name="me_id" value="${esc(b.meId)}" />'
-      '<input type="hidden" name="merchant_request" value="${esc(b.merchantRequest)}" />'
-      '<input type="hidden" name="hash" value="${esc(b.hash)}" />'
-      '<noscript><button type="submit">Continue</button></noscript>'
-      '</form>'
-      '</body></html>';
+  return '''<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting to Payment Gateway...</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px; 
+            background: #f5f5f5; 
+        }
+        .loading { 
+            color: #666; 
+            margin: 20px 0; 
+        }
+        .fallback-btn { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 20px 0; 
+        }
+        .fallback-btn:hover { 
+            background: #0056b3; 
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">Redirecting to payment gateway...</div>
+    
+    <form id="paymentForm" method="POST" action="${esc(b.actionUrl)}" enctype="application/x-www-form-urlencoded">
+        <input type="hidden" name="me_id" value="${esc(b.meId)}" />
+        <input type="hidden" name="merchant_request" value="${esc(b.merchantRequest)}" />
+        <input type="hidden" name="hash" value="${esc(b.hash)}" />
+    </form>
+    
+    <button class="fallback-btn" onclick="submitForm()">Continue to Payment</button>
+    
+    <script>
+        // Multiple auto-submit attempts with different methods
+        function submitForm() {
+            console.log('Attempting to submit form...');
+            const form = document.getElementById('paymentForm');
+            if (form) {
+                try {
+                    form.submit();
+                    console.log('Form submitted successfully');
+                } catch (e) {
+                    console.error('Error submitting form:', e);
+                    // Fallback: try to submit programmatically
+                    setTimeout(() => {
+                        try {
+                            form.submit();
+                        } catch (e2) {
+                            console.error('Fallback submission failed:', e2);
+                        }
+                    }, 100);
+                }
+            }
+        }
+        
+        // Auto-submit on page load
+        function autoSubmit() {
+            console.log('Auto-submit triggered');
+            // Multiple attempts with delays
+            setTimeout(submitForm, 100);
+            setTimeout(submitForm, 500);
+            setTimeout(submitForm, 1000);
+        }
+        
+        // Try different event handlers
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', autoSubmit);
+        } else {
+            autoSubmit();
+        }
+        
+        // Also try on window load
+        window.addEventListener('load', function() {
+            console.log('Window loaded, attempting submission...');
+            setTimeout(submitForm, 200);
+        });
+        
+        // Fallback for older browsers
+        if (document.attachEvent) {
+            document.attachEvent('onreadystatechange', function() {
+                if (document.readyState === 'complete') {
+                    autoSubmit();
+                }
+            });
+        }
+    </script>
+</body>
+</html>''';
 }
