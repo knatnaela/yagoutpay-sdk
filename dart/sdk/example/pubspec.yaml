@@ -1,0 +1,27 @@
+name: sdk_example
+description: "Demonstrates how to use the sdk plugin."
+publish_to: 'none'
+
+environment:
+  sdk: ^3.5.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  yagoutpay_sdk:
+    path: ../
+
+  flutter_inappwebview: ^6.0.0
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+
+
+flutter:
+  uses-material-design: true
+
+

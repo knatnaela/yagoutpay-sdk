@@ -18,8 +18,8 @@ A private demo app that showcases the YagoutPay SDK. Build payloads, preview pla
 ### Setup
 Create a `.env` file in this folder:
 ```
-YAGOUT_MERCHANT_ID=202508080001
-YAGOUT_MERCHANT_KEY=IG3CNW5uNrUO2mU2htUOWb9rgXCF7XMAXmL63d7wNZo=
+YAGOUT_MERCHANT_ID=<MERCHANT_ID>
+YAGOUT_MERCHANT_KEY=<ENCRYPTION_KEY>
 ```
 
 ### Install & run
