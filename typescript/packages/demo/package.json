@@ -4,11 +4,16 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "tsx src/server.ts",
+    "dev:system-ca": "NODE_OPTIONS=--use-system-ca tsx src/server.ts",
+    "dev:insecure": "ALLOW_INSECURE_TLS=1 tsx src/server.ts",
     "build": "tsc -p .",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "start:system-ca": "NODE_OPTIONS=--use-system-ca node dist/server.js",
+    "start:insecure": "ALLOW_INSECURE_TLS=1 node dist/server.js"
   },
   "dependencies": {
     "@yagoutpay/sdk": "file:../sdk",
+    "undici": "^6.19.8",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
   },

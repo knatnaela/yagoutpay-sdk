@@ -1,20 +1,33 @@
 import express from 'express';
 import 'dotenv/config';
-import { buildFormPayload, aes256CbcDecrypt } from '@yagoutpay/sdk';
+import { buildFormPayload, aes256CbcDecrypt, createYagoutPay, buildApiRequestBody, sendApiIntegration } from '@yagoutpay/sdk';
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// Configure undici to allow insecure TLS if ALLOW_INSECURE_TLS=1
+if (process.env.ALLOW_INSECURE_TLS === '1') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const undici = require('undici');
+  const dispatcher = new undici.Agent({ connect: { rejectUnauthorized: false } });
+  undici.setGlobalDispatcher(dispatcher);
+  // eslint-disable-next-line no-console
+  console.warn('[demo] ALLOW_INSECURE_TLS=1: TLS certificate verification is disabled (debug only)');
+}
+
 // Demo creds (UAT) via env
 const MERCHANT_ID = process.env.YAGOUT_MERCHANT_ID || '';
 const MERCHANT_KEY = process.env.YAGOUT_MERCHANT_KEY || '';
+const MERCHANT_KEY_API = process.env.YAGOUT_MERCHANT_KEY_API || MERCHANT_KEY;
 
 if (!MERCHANT_ID || !MERCHANT_KEY) {
   // eslint-disable-next-line no-console
   console.error('[YagoutPay Demo] Missing env vars YAGOUT_MERCHANT_ID or YAGOUT_MERCHANT_KEY');
   process.exit(1);
 }
+
+const yagout = createYagoutPay({ merchantId: MERCHANT_ID, encryptionKey: MERCHANT_KEY, environment: 'uat' });
 
 app.get('/', (_req: express.Request, res: express.Response) => {
   const orderDefault = `ORDER${Date.now()}`;
@@ -56,6 +69,7 @@ app.get('/', (_req: express.Request, res: express.Response) => {
             <div class="flex gap-3 pt-2">
               <button id="buildBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2">Build Payload</button>
               <button id="payBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2" disabled>Pay Now</button>
+              <button id="apiBtn" class="bg-sky-600 hover:bg-sky-700 text-white rounded-lg px-4 py-2">Send API Request</button>
             </div>
             <p id="error" class="text-sm text-rose-600 hidden"></p>
           </div>
@@ -105,6 +119,26 @@ app.get('/', (_req: express.Request, res: express.Response) => {
                 <button data-copy="hash" class="text-indigo-600 text-xs">Copy</button>
               </div>
               <pre id="hash" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow p-5">
+          <h2 class="font-medium text-slate-700 mb-4">API Response</h2>
+          <div class="space-y-3 text-sm">
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600">Raw</span>
+                <button data-copy="api_raw" class="text-indigo-600 text-xs">Copy</button>
+              </div>
+              <pre id="api_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
+            </div>
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-600">Decrypted</span>
+                <button data-copy="api_decrypted" class="text-indigo-600 text-xs">Copy</button>
+              </div>
+              <pre id="api_decrypted" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
             </div>
           </div>
         </div>
@@ -171,6 +205,28 @@ app.get('/', (_req: express.Request, res: express.Response) => {
         });
         form.submit();
       });
+
+      qs('#apiBtn').addEventListener('click', async () => {
+        qs('#error').classList.add('hidden');
+        show('api_raw', '');
+        show('api_decrypted', '');
+        try {
+          const body = {
+            amount: qs('#amount').value,
+            order_no: qs('#order_no').value,
+            email: qs('#email').value,
+            mobile: qs('#mobile').value,
+          };
+          const resp = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const data = await resp.json();
+          if (!data.success) throw new Error(data.error || 'Failed');
+          show('api_raw', JSON.stringify(data.data.raw, null, 2));
+          show('api_decrypted', data.data.decryptedResponse || '');
+        } catch (err) {
+          qs('#error').textContent = err.message;
+          qs('#error').classList.remove('hidden');
+        }
+      });
     </script>
   </body>
   </html>
@@ -181,8 +237,8 @@ app.post('/api/build', (req: express.Request, res: express.Response) => {
   try {
     const amount = String(req.body.amount ?? '10');
     const order_no = String(req.body.order_no ?? `ORDER${Date.now()}`);
-    const email = String(req.body.email ?? 'buyer@example.com');
-    const mobile = String(req.body.mobile ?? '0912345678');
+    const email = String(req.body.email);
+    const mobile = String(req.body.mobile);
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     const details = {
@@ -199,6 +255,7 @@ app.post('/api/build', (req: express.Request, res: express.Response) => {
       customerEmail: email,
       customerMobile: mobile,
       isLoggedIn: 'Y' as const,
+
     };
 
     const built = buildFormPayload(details, MERCHANT_KEY);
@@ -208,6 +265,95 @@ app.post('/api/build', (req: express.Request, res: express.Response) => {
     return res.status(400).json({ success: false, error: (err as Error).message });
   }
 });
+
+app.post('/api/send', async (req: express.Request, res: express.Response) => {
+  try {
+    const amount = String(req.body.amount ?? '10');
+    const order_no = String(req.body.order_no ?? `ORDER${Date.now()}`);
+    const email = String(req.body.email);
+    const mobile = String(req.body.mobile);
+
+    const details = {
+      aggregatorId: 'yagout',
+      orderNumber: order_no,
+      amount,
+      country: 'ETH',
+      currency: 'ETB',
+      transactionType: 'SALE',
+      customerEmail: email,
+      customerMobile: mobile,
+      // API required pg_details
+      pgId: '67ee846571e740418d688c3f',
+      paymode: 'WA',
+      schemeId: '7',
+      walletType: 'telebirr',
+      successUrl: '',
+      failureUrl: '',
+    } as const;
+
+    // Build and preview API merchant_request_plain for diagnostics
+    const preview = buildApiRequestBody({ merchantId: MERCHANT_ID, ...details, channel: 'API' }, MERCHANT_KEY_API);
+    // eslint-disable-next-line no-console
+    console.log('[demo] API merchant_request_plain length:', preview.merchantRequestPlain.length);
+    // eslint-disable-next-line no-console
+    console.log('[demo] API merchant_request_plain snippet:', preview.merchantRequestPlain.slice(0, 400));
+    // eslint-disable-next-line no-console
+    console.log('[demo] Sending API request with details:', JSON.stringify(details));
+
+    const result = await sendApiIntegration({ merchantId: MERCHANT_ID, ...details, channel: 'API' }, MERCHANT_KEY_API, { fetchImpl: loggedFetch as unknown as typeof fetch });
+
+    // eslint-disable-next-line no-console
+    console.log('[demo] API response status:', result.raw?.status, 'message:', result.raw?.statusMessage);
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    const e = err as Error & { cause?: unknown };
+    // eslint-disable-next-line no-console
+    console.error('[demo] API request failed:', e.name, e.message);
+    if (e.cause) {
+      const c = e.cause as Record<string, unknown>;
+      // eslint-disable-next-line no-console
+      console.error('[demo] API error cause:', {
+        name: (c?.name as string) || undefined,
+        code: (c?.code as string) || undefined,
+        message: (c?.message as string) || undefined,
+      });
+    }
+    return res.status(400).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// Wrapper around global fetch to log request/response and errors
+async function loggedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : (input as Request).url);
+  const method = init?.method || 'POST';
+  const headers = init?.headers ? Object.fromEntries(new Headers(init.headers as HeadersInit).entries()) : {};
+  const bodyPreview = typeof init?.body === 'string' ? (init?.body as string).slice(0, 512) : '[non-string body]';
+  // eslint-disable-next-line no-console
+  console.log('[demo] fetch →', method, url, 'headers:', headers, 'body:', bodyPreview);
+  try {
+    const resp = await fetch(url, init);
+    const text = await resp.clone().text().catch(() => '');
+    // eslint-disable-next-line no-console
+    console.log('[demo] fetch ←', resp.status, resp.statusText, 'body:', text.slice(0, 512));
+    return resp;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    const err = e as Error & { cause?: unknown };
+    console.error('[demo] fetch threw:', err.name, err.message);
+    if (err.cause) {
+      const c = err.cause as Record<string, unknown>;
+      console.error('[demo] fetch cause:', {
+        name: (c?.name as string) || undefined,
+        code: (c?.code as string) || undefined,
+        message: (c?.message as string) || undefined,
+      });
+    }
+    throw e;
+  }
+}
+
 
 // Success and Failure callback endpoints to receive gateway responses
 app.post('/success', (req: express.Request, res: express.Response) => {
@@ -279,8 +425,8 @@ function renderCallbackPage(params: { title: string; tone: 'success' | 'failure'
   const toneClass = params.tone === 'success' ? 'text-emerald-700' : 'text-rose-700';
   const decryptedList = Object.keys(params.decrypted).length
     ? Object.entries(params.decrypted)
-        .map(([k, v]) => `<div class=\"mb-3\"><div class=\"text-xs text-slate-500\">${escapeHtml(k)}</div><pre class=\"bg-slate-50 border rounded p-2 overflow-x-auto text-sm\">${escapeHtml(v)}</pre></div>`)
-        .join('')
+      .map(([k, v]) => `<div class=\"mb-3\"><div class=\"text-xs text-slate-500\">${escapeHtml(k)}</div><pre class=\"bg-slate-50 border rounded p-2 overflow-x-auto text-sm\">${escapeHtml(v)}</pre></div>`)
+      .join('')
     : '<div class="text-slate-500">No decryptable fields found.</div>';
 
   return `<!doctype html>

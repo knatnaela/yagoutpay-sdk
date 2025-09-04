@@ -19,7 +19,7 @@ function isUrl(value: string): boolean {
 }
 
 export function validateTransactionDetails(details: TransactionDetails): void {
-  const required: Array<[keyof TransactionDetails, string]> = [
+  const baseRequired: Array<[keyof TransactionDetails, string]> = [
     ['aggregatorId', 'aggregatorId'],
     ['merchantId', 'merchantId'],
     ['orderNumber', 'orderNumber'],
@@ -27,9 +27,24 @@ export function validateTransactionDetails(details: TransactionDetails): void {
     ['country', 'country'],
     ['currency', 'currency'],
     ['transactionType', 'transactionType'],
+    ['channel', 'channel'],
+  ];
+  const webMobileExtras: Array<[keyof TransactionDetails, string]> = [
     ['successUrl', 'successUrl'],
     ['failureUrl', 'failureUrl'],
-    ['channel', 'channel'],
+  ];
+  const apiExtras: Array<[keyof TransactionDetails, string]> = [
+    ['customerMobile', 'customerMobile'],
+    ['pgId', 'pgId'],
+    ['paymode', 'paymode'],
+    ['schemeId', 'schemeId'],
+    ['walletType', 'walletType'],
+  ];
+
+  const required: Array<[keyof TransactionDetails, string]> = [
+    ...baseRequired,
+    ...(['WEB', 'MOBILE'].includes(details.channel) ? webMobileExtras : []),
+    ...(details.channel === 'API' ? apiExtras : []),
   ];
 
   for (const [key, label] of required) {
@@ -55,15 +70,18 @@ export function validateTransactionDetails(details: TransactionDetails): void {
     throw new ValidationError('transactionType must be one of: SALE');
   }
 
-  if (!['WEB', 'MOBILE'].includes(details.channel)) {
-    throw new ValidationError('channel must be WEB or MOBILE');
+  if (!['WEB', 'MOBILE', 'API'].includes(details.channel)) {
+    throw new ValidationError('channel must be WEB, MOBILE or API');
   }
 
-  if (!isUrl(details.successUrl)) {
-    throw new ValidationError('successUrl must be a valid URL');
-  }
-  if (!isUrl(details.failureUrl)) {
-    throw new ValidationError('failureUrl must be a valid URL');
+  // For API channel, success/failure URLs may be empty; for WEB/MOBILE validate URLs
+  if (['WEB', 'MOBILE'].includes(details.channel)) {
+    if (!isUrl(details.successUrl)) {
+      throw new ValidationError('successUrl must be a valid URL');
+    }
+    if (!isUrl(details.failureUrl)) {
+      throw new ValidationError('failureUrl must be a valid URL');
+    }
   }
 }
 
