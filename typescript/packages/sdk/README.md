@@ -3,7 +3,6 @@
 ### Highlights
 - **Spec-accurate assembly**: Builds `merchant_request` in the exact sectioned format required by the gateway
 - **Modern crypto**: SHA‑256 + AES‑256‑CBC (static IV, PKCS7 padding)
-- **Validation**: Clear, typed input checks with actionable messages
 - **Forms made easy**: Generate an auto‑submit HTML form in one call
 
 ### Install (monorepo usage)
@@ -16,7 +15,7 @@ Add as a local dependency in your app package:
 }
 ```
 
-### Quick start
+### Quick start (WEB form)
 ```ts
 import { buildFormPayload, renderAutoSubmitForm } from '@yagoutpay/sdk';
 
@@ -45,15 +44,44 @@ const built = buildFormPayload({
 const html = renderAutoSubmitForm(built);
 ```
 
+### Quick start (API integration)
+```ts
+import { createYagoutPay } from '@yagoutpay/sdk';
+
+const yagout = createYagoutPay({
+  merchantId: '202504290002',
+  encryptionKey: 'ENCRYPTION_KEY',
+  environment: 'uat',
+});
+
+const result = await yagout.api.send({
+  aggregatorId: 'yagout',
+  orderNumber: '49340',
+  amount: '1',
+  country: 'ETH',
+  currency: 'ETB',
+  transactionType: 'SALE',
+  customerMobile: '0912345678',
+  // pg_details are defaulted for convenience but can be overridden
+});
+
+console.log(result.endpoint, result.raw.status);
+console.log(result.decryptedResponse); // optional plain response
+```
+
 ### API at a glance
 - **buildFormPayload(details, encryptionKey, actionUrl?) → BuiltRequest**
 - **createYagoutPay(config).build(details) → BuiltRequest**
+- **createYagoutPay(config).api.send(details, options?) → Promise<ApiRequestResult>**
+- parseDecryptedResponse(text) → ParsedGatewayResponse
+- parseApiResult(result) → ParsedGatewayResponse | undefined
+- redactObject(obj), maskTail(value), previewBase64(value)
+- toFormUrlEncoded(payload), toFormData(payload)
 - buildMerchantRequestPlain(details) → string
 - buildHashInput(details) → string
 - generateSha256Hex(input) → string
 - encryptHashHex(hashHex, encryptionKey) → string
 - renderAutoSubmitForm(payload) → string
-- validateTransactionDetails(details) → void
 
 ### merchant_request layout
 Joined with `~` as 9 sections:

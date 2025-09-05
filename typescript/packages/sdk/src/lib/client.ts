@@ -1,26 +1,15 @@
-import type { ApiRequestResult, ApiIntegrationResponse, BuiltRequest, TransactionDetails, YagoutPayClientConfig } from '../types';
+import type { ApiRequestResult, ApiIntegrationResponse, BuiltRequest, TransactionDetails, YagoutPayClientConfig, YagoutPayClient, SendApiOptions } from '../types';
 import { buildMerchantRequestPlain, buildApiMerchantRequestPlain } from './assemble';
 import { aes256CbcDecrypt, aes256CbcEncrypt } from './crypto';
 import { buildHashInput, generateSha256Hex, encryptHashHex } from './hash';
 import { validateTransactionDetails } from './validate';
+import { ACTION_URLS, API_URLS, API_DEFAULTS } from './constants';
 
-const ACTION_URLS = {
-  uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/paymentRedirection/checksumGatewayPage',
-  prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/paymentRedirection/checksumGatewayPage',
-} as const;
+// SendApiOptions is exported from types
 
-const API_URLS = {
-  uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/apiRedirection/apiIntegration',
-  prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/apiRedirection/apiIntegration',
-} as const;
-
-const API_DEFAULTS = {
-  pgId: '67ee846571e740418d688c3f',
-  paymode: 'WA',
-  schemeId: '7',
-  walletType: 'telebirr',
-} as const;
-
+/**
+ * Build the full set of form fields and related debug fields for the WEB flow.
+ */
 export function buildFormPayload(details: TransactionDetails, encryptionKey: string, actionUrl?: string): BuiltRequest {
   validateTransactionDetails(details);
   const merchant_request_plain = buildMerchantRequestPlain(details);
@@ -39,7 +28,7 @@ export function buildFormPayload(details: TransactionDetails, encryptionKey: str
   };
 }
 
-export function createYagoutPay(config: YagoutPayClientConfig) {
+export function createYagoutPay(config: YagoutPayClientConfig): YagoutPayClient {
   const actionUrl = config.actionUrlOverride ?? ACTION_URLS[config.environment ?? 'uat'];
   const apiUrl = API_URLS[config.environment ?? 'uat'];
   return {
@@ -47,7 +36,7 @@ export function createYagoutPay(config: YagoutPayClientConfig) {
       return buildFormPayload({ ...details, merchantId: config.merchantId }, config.encryptionKey, actionUrl);
     },
     api: {
-      async send(details: Omit<TransactionDetails, 'merchantId' | 'channel'>, options?: { endpoint?: string; decryptResponse?: boolean; fetchImpl?: typeof fetch; }): Promise<ApiRequestResult> {
+      async send(details: Omit<TransactionDetails, 'merchantId' | 'channel'>, options?: SendApiOptions): Promise<ApiRequestResult> {
         const finalDetails: TransactionDetails = {
           ...API_DEFAULTS,
           ...details,
@@ -65,14 +54,10 @@ export function createYagoutPay(config: YagoutPayClientConfig) {
 }
 
 export function buildApiRequestBody(details: TransactionDetails, encryptionKey: string): { merchantId: string; merchantRequest: string; merchantRequestPlain: string; hash?: string; hashHex?: string; hashInput?: string } {
-  // Build API JSON payload with exact field names
+  // Build API JSON payload
   const merchant_request_plain = buildApiMerchantRequestPlain({ ...details, channel: 'API' });
   const merchantRequest = aes256CbcEncrypt(merchant_request_plain, encryptionKey);
-  // Compute hash same as form flow; some API integrations require it
-  const hash_input = buildHashInput(details);
-  const hash_hex = generateSha256Hex(hash_input);
-  const hash = encryptHashHex(hash_hex, encryptionKey);
-  return { merchantId: details.merchantId, merchantRequest, merchantRequestPlain: merchant_request_plain, hash, hashHex: hash_hex, hashInput: hash_input };
+  return { merchantId: details.merchantId, merchantRequest, merchantRequestPlain: merchant_request_plain };
 }
 
 
@@ -80,7 +65,7 @@ export function buildApiRequestBody(details: TransactionDetails, encryptionKey: 
 export async function sendApiIntegration(
   details: TransactionDetails,
   encryptionKey: string,
-  options?: { endpoint?: string; decryptResponse?: boolean; fetchImpl?: typeof fetch }
+  options?: SendApiOptions
 ): Promise<ApiRequestResult> {
   const endpoint = options?.endpoint ?? API_URLS.uat;
   const decryptResponse = options?.decryptResponse ?? true;

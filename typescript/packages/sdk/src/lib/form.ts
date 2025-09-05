@@ -1,5 +1,8 @@
 import type { BuiltRequest } from '../types';
 
+/**
+ * Render an auto-submit HTML form for redirecting to the gateway.
+ */
 export function renderAutoSubmitForm(payload: BuiltRequest): string {
   const inputs = [
     ['me_id', payload.me_id],
@@ -21,6 +24,7 @@ export function renderAutoSubmitForm(payload: BuiltRequest): string {
 </html>`;
 }
 
+/** Escape a string for safe inclusion within HTML attribute values. */
 function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')

@@ -1,6 +1,6 @@
 import express from 'express';
 import 'dotenv/config';
-import { buildFormPayload, aes256CbcDecrypt, createYagoutPay, buildApiRequestBody, sendApiIntegration } from '@yagoutpay/sdk';
+import { buildFormPayload, aes256CbcDecrypt, createYagoutPay, sendApiIntegration, DEFAULT_PG_OPTIONS, API_DEFAULTS } from '@yagoutpay/sdk';
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -29,202 +29,301 @@ if (!MERCHANT_ID || !MERCHANT_KEY) {
 
 const yagout = createYagoutPay({ merchantId: MERCHANT_ID, encryptionKey: MERCHANT_KEY, environment: 'uat' });
 
+// Simple in-memory catalog (prices in cents)
+const CATALOG = [
+  { id: 'coffee', name: 'Yagout Coffee Beans 500g', priceCents: 8500, image: 'https://images.unsplash.com/photo-1503481766315-7a586b20f66f?q=80&w=800&auto=format&fit=crop' },
+  { id: 'mug', name: 'Signature Ceramic Mug', priceCents: 100, image: 'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?q=80&w=800&auto=format&fit=crop' },
+  { id: 'tshirt', name: 'Comfort Tee', priceCents: 6900, image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=800&auto=format&fit=crop' },
+  { id: 'cap', name: 'Dad Hat', priceCents: 4500, image: 'https://images.unsplash.com/photo-1521123845560-14093637aa7a?q=80&w=800&auto=format&fit=crop' },
+  { id: 'sticker', name: 'Sticker Pack', priceCents: 900, image: 'https://images.unsplash.com/photo-1622551243908-05f646813e6e?q=80&w=800&auto=format&fit=crop' },
+];
+
+function findPriceCents(id: string): number | undefined {
+  return CATALOG.find((p) => p.id === id)?.priceCents;
+}
+
+function centsToAmountString(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 app.get('/', (_req: express.Request, res: express.Response) => {
-  const orderDefault = `ORDER${Date.now()}`;
   res.type('html').send(`
 <!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>YagoutPay Demo</title>
+    <title>YagoutPay • Checkout Demo</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="bg-slate-50">
-    <div class="max-w-4xl mx-auto p-6">
-      <h1 class="text-2xl font-semibold text-slate-800">YagoutPay Checkout Demo</h1>
-      <p class="text-slate-500 mb-6">Build doc-accurate payloads, preview plain/encrypted values, and submit to gateway.</p>
+    <div class="max-w-5xl mx-auto p-6">
+      <header class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-semibold text-slate-800">YagoutPay Checkout</h1>
+        <nav class="text-sm text-slate-500">UAT</nav>
+      </header>
 
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl shadow p-5">
-          <h2 class="font-medium text-slate-700 mb-4">Payment Details</h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm text-slate-600 mb-1">Amount (ETB)</label>
-              <input id="amount" class="w-full border rounded-lg px-3 py-2" type="text" value="10" />
-            </div>
-            <div>
-              <label class="block text-sm text-slate-600 mb-1">Order No</label>
-              <input id="order_no" class="w-full border rounded-lg px-3 py-2" type="text" value="${orderDefault}" />
-            </div>
-            <div>
-              <label class="block text-sm text-slate-600 mb-1">Email</label>
-              <input id="email" class="w-full border rounded-lg px-3 py-2" type="email" value="buyer@example.com" />
-            </div>
-            <div>
-              <label class="block text-sm text-slate-600 mb-1">Mobile</label>
-              <input id="mobile" class="w-full border rounded-lg px-3 py-2" type="text" value="0912345678" />
-            </div>
-
-            <div class="flex gap-3 pt-2">
-              <button id="buildBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2">Build Payload</button>
-              <button id="payBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2" disabled>Pay Now</button>
-              <button id="apiBtn" class="bg-sky-600 hover:bg-sky-700 text-white rounded-lg px-4 py-2">Send API Request</button>
-            </div>
-            <p id="error" class="text-sm text-rose-600 hidden"></p>
+      <div class="bg-white rounded-2xl shadow p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-medium text-slate-800">Make a payment</h2>
+            <p class="text-slate-500 text-sm">Choose a mode and enter your details to proceed.</p>
+          </div>
+          <div class="inline-flex bg-slate-100 rounded-lg p-1">
+            <button id="modeForm" class="px-3 py-1.5 text-sm rounded-md bg-white shadow">Hosted Form</button>
+            <button id="modeApi" class="px-3 py-1.5 text-sm rounded-md text-slate-600">Direct API</button>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow p-5">
-          <h2 class="font-medium text-slate-700 mb-4">Preview</h2>
-          <div class="space-y-3 text-sm">
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">me_id</span>
-                <button data-copy="me_id" class="text-indigo-600 text-xs">Copy</button>
-              </div>
-              <pre id="me_id" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
-            </div>
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">merchant_request (plain)</span>
-                <button data-copy="plain" class="text-indigo-600 text-xs">Copy</button>
-              </div>
-              <pre id="plain" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
-            </div>
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">merchant_request (encrypted)</span>
-                <button data-copy="merchant_request" class="text-indigo-600 text-xs">Copy</button>
-              </div>
-              <pre id="merchant_request" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
-            </div>
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">hash_input</span>
-                <button data-copy="hash_input" class="text-indigo-600 text-xs">Copy</button>
-              </div>
-              <pre id="hash_input" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
-            </div>
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">hash_hex</span>
-                <button data-copy="hash_hex" class="text-indigo-600 text-xs">Copy</button>
-              </div>
-              <pre id="hash_hex" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
-            </div>
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">hash (encrypted)</span>
-                <button data-copy="hash" class="text-indigo-600 text-xs">Copy</button>
-              </div>
-              <pre id="hash" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
-            </div>
+        <div class="grid md:grid-cols-3 gap-6 mt-6">
+          <div class="md:col-span-2">
+            <div id="catalog" class="grid sm:grid-cols-2 gap-4"></div>
           </div>
-        </div>
-        
-        <div class="bg-white rounded-xl shadow p-5">
-          <h2 class="font-medium text-slate-700 mb-4">API Response</h2>
-          <div class="space-y-3 text-sm">
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">Raw</span>
-                <button data-copy="api_raw" class="text-indigo-600 text-xs">Copy</button>
+          <div>
+            <div class="border rounded-xl p-4">
+              <div class="text-sm font-medium text-slate-700 mb-3">Your Cart</div>
+              <div id="cart" class="space-y-3"></div>
+              <div class="border-t my-3"></div>
+              <div class="flex items-center justify-between text-sm mb-1"><span class="text-slate-600">Subtotal</span><span id="subtotal" class="font-medium">ETB 0.00</span></div>
+              <div class="flex items-center justify-between text-sm mb-3"><span class="text-slate-500">Shipping</span><span class="text-slate-500">Free</span></div>
+              <div class="flex items-center justify-between text-base"><span class="text-slate-700">Total</span><span id="total" class="font-semibold">ETB 0.00</span></div>
+              <div class="mt-4 space-y-3">
+                <div id="pgRow">
+                  <label for="pg" class="block text-sm text-slate-600 mb-1">Payment method</label>
+                  <select id="pg" class="w-full border rounded-lg px-3 py-2"></select>
+                </div>
+                <div id="emailRow">
+                  <input id="email" class="w-full border rounded-lg px-3 py-2" type="email" placeholder="Email (optional)" />
+                </div>
+                <div id="mobileRow">
+                  <input id="mobile" class="w-full border rounded-lg px-3 py-2" type="text" placeholder="Mobile (required for API)" />
+                </div>
+                <button id="continueBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2">Checkout</button>
+                <p id="error" class="text-sm text-rose-600 hidden"></p>
               </div>
-              <pre id="api_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
             </div>
-            <div>
-              <div class="flex items-center justify-between">
-                <span class="text-slate-600">Decrypted</span>
-                <button data-copy="api_decrypted" class="text-indigo-600 text-xs">Copy</button>
+            <div id="apiCard" class="hidden md:block mt-6">
+              <div class="border rounded-xl p-4 h-full">
+                <div class="text-sm text-slate-600 mb-2">API Response</div>
+                <pre id="api_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                <div class="text-xs text-slate-500 mt-2">Decrypted</div>
+                <pre id="api_decrypted" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
               </div>
-              <pre id="api_decrypted" class="bg-slate-50 border rounded p-2 overflow-x-auto"></pre>
             </div>
           </div>
         </div>
       </div>
 
+      <footer class="text-center text-xs text-slate-500 mt-6">
+        For demo purposes only • Do not use real card details
+      </footer>
+
       <form id="payForm" method="POST" class="hidden"></form>
     </div>
 
     <script>
-      let lastPayload = null;
+      const CATALOG = ${JSON.stringify(CATALOG)};
+      const PG_OPTIONS = ${JSON.stringify(DEFAULT_PG_OPTIONS)};
+      let mode = 'form';
       const qs = (s) => document.querySelector(s);
       const show = (id, v='') => (qs('#'+id).textContent = v || '');
-      const copy = (id) => navigator.clipboard.writeText(qs('#'+id).textContent || '');
+      const cart = new Map();
+      const btn = qs('#continueBtn');
 
-      document.querySelectorAll('[data-copy]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          copy(btn.getAttribute('data-copy'));
-        });
-      });
-
-      qs('#buildBtn').addEventListener('click', async () => {
-        qs('#error').classList.add('hidden');
-        try {
-          const body = {
-            amount: qs('#amount').value,
-            order_no: qs('#order_no').value,
-            email: qs('#email').value,
-            mobile: qs('#mobile').value,
-          };
-          const resp = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-          const data = await resp.json();
-          if (!data.success) throw new Error(data.error || 'Failed');
-          lastPayload = data.data;
-          show('me_id', data.data.me_id);
-          show('plain', data.data.merchant_request_plain);
-          show('merchant_request', data.data.merchant_request);
-          show('hash_input', data.data.hash_input);
-          show('hash_hex', data.data.hash_hex);
-          show('hash', data.data.hash);
-          qs('#payBtn').disabled = false;
-        } catch (err) {
-          qs('#error').textContent = err.message;
-          qs('#error').classList.remove('hidden');
+      function setLoading(isLoading){
+        if (isLoading){
+          if (!btn.dataset.oldText) btn.dataset.oldText = btn.textContent || 'Checkout';
+          btn.disabled = true;
+          btn.classList.add('opacity-60','cursor-not-allowed');
+          btn.textContent = 'Processing…';
+          btn.setAttribute('aria-busy','true');
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60','cursor-not-allowed');
+          btn.textContent = btn.dataset.oldText || 'Checkout';
+          btn.removeAttribute('aria-busy');
         }
-      });
+      }
 
-      qs('#payBtn').addEventListener('click', () => {
-        if (!lastPayload) return;
-        const form = qs('#payForm');
-        form.setAttribute('action', lastPayload.actionUrl);
-        form.innerHTML = '';
-        const fields = [
-          ['me_id', lastPayload.me_id],
-          ['merchant_request', lastPayload.merchant_request],
-          ['hash', lastPayload.hash],
-        ];
-        fields.forEach(([name, value]) => {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = name;
-          input.value = value;
-          form.appendChild(input);
+      function priceLabel(cents){ return 'ETB ' + (cents/100).toFixed(2); }
+
+      function renderCatalog(){
+        const root = qs('#catalog');
+        root.innerHTML = '';
+        CATALOG.forEach(function(p){
+          const div = document.createElement('div');
+          div.className = 'border rounded-xl overflow-hidden bg-white';
+          div.innerHTML = '' +
+            '<div class="aspect-[4/3] bg-slate-100">' +
+              '<img src="' + p.image + '" alt="' + p.name + '" class="w-full h-full object-cover"/>' +
+            '</div>' +
+            '<div class="p-3">' +
+              '<div class="text-sm font-medium text-slate-800">' + p.name + '</div>' +
+              '<div class="text-sm text-slate-600">' + priceLabel(p.priceCents) + '</div>' +
+              '<button data-add="' + p.id + '" class="mt-3 inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Add to cart</button>' +
+            '</div>';
+          root.appendChild(div);
         });
-        form.submit();
-      });
+        root.querySelectorAll('[data-add]').forEach(function(btn){
+          btn.addEventListener('click', function(){
+            const id = btn.getAttribute('data-add');
+            const current = cart.get(id) || 0;
+            cart.set(id, current + 1);
+            renderCart();
+          });
+        });
+      }
 
-      qs('#apiBtn').addEventListener('click', async () => {
+      function renderCart(){
+        const root = qs('#cart');
+        root.innerHTML = '';
+        let subtotal = 0;
+        cart.forEach(function(qty, id){
+          const p = CATALOG.find(function(x){ return x.id===id; });
+          if (!p) return;
+          const line = p.priceCents * qty;
+          subtotal += line;
+          const div = document.createElement('div');
+          div.className = 'flex items-center justify-between';
+          div.innerHTML = '' +
+            '<div>' +
+              '<div class="text-sm text-slate-800">' + p.name + '</div>' +
+              '<div class="text-xs text-slate-500">' + priceLabel(p.priceCents) + ' × ' + qty + '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-2">' +
+              '<button data-dec="' + id + '" class="px-2 py-1 rounded border">-</button>' +
+              '<span class="w-6 text-center">' + qty + '</span>' +
+              '<button data-inc="' + id + '" class="px-2 py-1 rounded border">+</button>' +
+              '<div class="w-20 text-right text-sm font-medium">' + priceLabel(line) + '</div>' +
+            '</div>';
+          root.appendChild(div);
+        });
+        if (cart.size === 0) {
+          root.innerHTML = '<div class="text-slate-500 text-sm">Your cart is empty.</div>';
+        }
+        qs('#subtotal').textContent = priceLabel(subtotal);
+        qs('#total').textContent = priceLabel(subtotal);
+
+        root.querySelectorAll('[data-inc]').forEach(function(btn){
+          btn.addEventListener('click', function(){
+            const id = btn.getAttribute('data-inc');
+            const current = cart.get(id) || 0;
+            cart.set(id, current + 1);
+            renderCart();
+          });
+        });
+        root.querySelectorAll('[data-dec]').forEach(function(btn){
+          btn.addEventListener('click', function(){
+            const id = btn.getAttribute('data-dec');
+            const current = cart.get(id) || 0;
+            const next = Math.max(0, current - 1);
+            if (next === 0) cart.delete(id); else cart.set(id, next);
+            renderCart();
+          });
+        });
+      }
+
+      const setMode = (m) => {
+        mode = m;
+        if (m === 'form') {
+          qs('#modeForm').classList.add('bg-white','shadow');
+          qs('#modeForm').classList.remove('text-slate-600');
+          qs('#modeApi').classList.remove('bg-white','shadow');
+          qs('#modeApi').classList.add('text-slate-600');
+          qs('#apiCard').classList.add('hidden');
+          // hide inputs not needed for hosted form
+          qs('#pgRow').classList.add('hidden');
+          qs('#emailRow').classList.add('hidden');
+          qs('#mobileRow').classList.add('hidden');
+        } else {
+          qs('#modeApi').classList.add('bg-white','shadow');
+          qs('#modeApi').classList.remove('text-slate-600');
+          qs('#modeForm').classList.remove('bg-white','shadow');
+          qs('#modeForm').classList.add('text-slate-600');
+          qs('#apiCard').classList.remove('hidden');
+          // show inputs needed for API
+          qs('#pgRow').classList.remove('hidden');
+          qs('#emailRow').classList.remove('hidden');
+          qs('#mobileRow').classList.remove('hidden');
+        }
+      };
+      qs('#modeForm').addEventListener('click', (e) => { e.preventDefault(); setMode('form'); });
+      qs('#modeApi').addEventListener('click', (e) => { e.preventDefault(); setMode('api'); });
+      setMode('form');
+      renderCatalog();
+      renderCart();
+      // Populate payment methods
+      (function(){
+        const sel = qs('#pg');
+        sel.innerHTML = '';
+        PG_OPTIONS.forEach(function(opt, idx){
+          const o = document.createElement('option');
+          o.value = opt.id;
+          o.textContent = opt.label;
+          if (idx === 0) o.selected = true;
+          sel.appendChild(o);
+        });
+      })();
+
+      qs('#continueBtn').addEventListener('click', async (e) => {
+        e.preventDefault();
         qs('#error').classList.add('hidden');
-        show('api_raw', '');
-        show('api_decrypted', '');
+        show('api_raw','');
+        show('api_decrypted','');
+
+        const body = {
+          cart: Array.from(cart.entries()).map(function(entry){ return { id: entry[0], qty: entry[1] }; }),
+          email: qs('#email').value.trim(),
+          mobile: qs('#mobile').value.trim(),
+          pgOptionId: qs('#pg').value,
+        };
+
+        if (!body.cart.length) {
+          qs('#error').textContent = 'Your cart is empty.';
+          qs('#error').classList.remove('hidden');
+          return;
+        }
+        if (mode === 'api' && !body.mobile) {
+          qs('#error').textContent = 'Please enter mobile number for API mode.';
+          qs('#error').classList.remove('hidden');
+          return;
+        }
+
         try {
-          const body = {
-            amount: qs('#amount').value,
-            order_no: qs('#order_no').value,
-            email: qs('#email').value,
-            mobile: qs('#mobile').value,
-          };
-          const resp = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-          const data = await resp.json();
-          if (!data.success) throw new Error(data.error || 'Failed');
-          show('api_raw', JSON.stringify(data.data.raw, null, 2));
-          show('api_decrypted', data.data.decryptedResponse || '');
+          setLoading(true);
+          if (mode === 'form') {
+            const resp = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await resp.json();
+            if (!data.success) throw new Error(data.error || 'Failed');
+            const form = qs('#payForm');
+            form.setAttribute('action', data.data.actionUrl);
+            form.innerHTML = '';
+            const fields = [
+              ['me_id', data.data.me_id],
+              ['merchant_request', data.data.merchant_request],
+              ['hash', data.data.hash],
+            ];
+            fields.forEach(([name, value]) => {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = name;
+              input.value = value;
+              form.appendChild(input);
+            });
+            form.submit();
+          } else {
+            const resp = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const data = await resp.json();
+            if (!data.success) throw new Error(data.error || 'Failed');
+            show('api_raw', JSON.stringify(data.data.raw, null, 2));
+            show('api_decrypted', data.data.decryptedResponse || '');
+          }
         } catch (err) {
           qs('#error').textContent = err.message;
           qs('#error').classList.remove('hidden');
+        } finally {
+          // In form mode, navigation occurs; this runs if still on page
+          setLoading(false);
         }
       });
     </script>
@@ -235,10 +334,23 @@ app.get('/', (_req: express.Request, res: express.Response) => {
 
 app.post('/api/build', (req: express.Request, res: express.Response) => {
   try {
-    const amount = String(req.body.amount ?? '10');
-    const order_no = String(req.body.order_no ?? `ORDER${Date.now()}`);
-    const email = String(req.body.email);
-    const mobile = String(req.body.mobile);
+    const items = Array.isArray(req.body.cart) ? (req.body.cart as Array<{ id: string; qty: number; }>) : [];
+    const email = String(req.body.email ?? '').trim();
+    const mobile = String(req.body.mobile ?? '').trim();
+    const pgOptionId = String(req.body.pgOptionId ?? '').trim();
+    if (!items.length) {
+      return res.status(400).json({ success: false, error: 'cart is required' });
+    }
+    const totalCents = items.reduce((sum, it) => {
+      const price = findPriceCents(String(it.id) || '');
+      const qty = Number(it.qty) || 0;
+      return price ? sum + price * Math.max(0, qty) : sum;
+    }, 0);
+    if (totalCents <= 0) {
+      return res.status(400).json({ success: false, error: 'cart is empty' });
+    }
+    const amount = centsToAmountString(totalCents);
+    const order_no = `ORDER${Date.now()}`;
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     const details = {
@@ -255,7 +367,11 @@ app.post('/api/build', (req: express.Request, res: express.Response) => {
       customerEmail: email,
       customerMobile: mobile,
       isLoggedIn: 'Y' as const,
-
+      // allow pg selection for demonstration (form flow may ignore these)
+      ...(function () {
+        const found = (DEFAULT_PG_OPTIONS as ReadonlyArray<any>).find((o: any) => o.id === pgOptionId);
+        return found ? { pgId: found.pgId, paymode: found.paymode, schemeId: found.schemeId, walletType: found.walletType } : {};
+      })(),
     };
 
     const built = buildFormPayload(details, MERCHANT_KEY);
@@ -268,10 +384,27 @@ app.post('/api/build', (req: express.Request, res: express.Response) => {
 
 app.post('/api/send', async (req: express.Request, res: express.Response) => {
   try {
-    const amount = String(req.body.amount ?? '10');
-    const order_no = String(req.body.order_no ?? `ORDER${Date.now()}`);
-    const email = String(req.body.email);
-    const mobile = String(req.body.mobile);
+    const items = Array.isArray(req.body.cart) ? (req.body.cart as Array<{ id: string; qty: number; }>) : [];
+    const email = String(req.body.email ?? '').trim();
+    const mobile = String(req.body.mobile ?? '').trim();
+    const pgOptionId = String(req.body.pgOptionId ?? '').trim();
+    if (!items.length) {
+      return res.status(400).json({ success: false, error: 'cart is required' });
+    }
+    if (!mobile) {
+      return res.status(400).json({ success: false, error: 'mobile is required for API mode' });
+    }
+
+    const totalCents = items.reduce((sum, it) => {
+      const price = findPriceCents(String(it.id) || '');
+      const qty = Number(it.qty) || 0;
+      return price ? sum + price * Math.max(0, qty) : sum;
+    }, 0);
+    if (totalCents <= 0) {
+      return res.status(400).json({ success: false, error: 'cart is empty' });
+    }
+    const amount = centsToAmountString(totalCents);
+    const order_no = `ORDER${Date.now()}`;
 
     const details = {
       aggregatorId: 'yagout',
@@ -282,28 +415,18 @@ app.post('/api/send', async (req: express.Request, res: express.Response) => {
       transactionType: 'SALE',
       customerEmail: email,
       customerMobile: mobile,
-      // API required pg_details
-      pgId: '67ee846571e740418d688c3f',
-      paymode: 'WA',
-      schemeId: '7',
-      walletType: 'telebirr',
+      // API required pg_details (select from exposed defaults)
+      ...(function () {
+        const found = (DEFAULT_PG_OPTIONS as ReadonlyArray<any>).find((o: any) => o.id === pgOptionId);
+        if (found) return { pgId: found.pgId, paymode: found.paymode, schemeId: found.schemeId, walletType: found.walletType };
+        // fallback to hard default if not chosen
+        return { pgId: API_DEFAULTS.pgId, paymode: API_DEFAULTS.paymode, schemeId: API_DEFAULTS.schemeId, walletType: API_DEFAULTS.walletType };
+      })(),
       successUrl: '',
       failureUrl: '',
     } as const;
 
-    // Build and preview API merchant_request_plain for diagnostics
-    const preview = buildApiRequestBody({ merchantId: MERCHANT_ID, ...details, channel: 'API' }, MERCHANT_KEY_API);
-    // eslint-disable-next-line no-console
-    console.log('[demo] API merchant_request_plain length:', preview.merchantRequestPlain.length);
-    // eslint-disable-next-line no-console
-    console.log('[demo] API merchant_request_plain snippet:', preview.merchantRequestPlain.slice(0, 400));
-    // eslint-disable-next-line no-console
-    console.log('[demo] Sending API request with details:', JSON.stringify(details));
-
     const result = await sendApiIntegration({ merchantId: MERCHANT_ID, ...details, channel: 'API' }, MERCHANT_KEY_API, { fetchImpl: loggedFetch as unknown as typeof fetch });
-
-    // eslint-disable-next-line no-console
-    console.log('[demo] API response status:', result.raw?.status, 'message:', result.raw?.statusMessage);
 
     return res.json({ success: true, data: result });
   } catch (err) {

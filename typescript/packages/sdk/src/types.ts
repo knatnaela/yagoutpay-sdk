@@ -1,5 +1,9 @@
+/** Channel of initiation. */
 export type Channel = 'WEB' | 'MOBILE' | 'API';
 
+/**
+ * Canonical transaction input used to build both WEB form and API payloads.
+ */
 export type TransactionDetails = {
   aggregatorId: string; // ag_id
   merchantId: string; // me_id
@@ -64,6 +68,9 @@ export type TransactionDetails = {
   udf7?: string;
 };
 
+/**
+ * Fully built WEB form payload and related debug fields.
+ */
 export type BuiltRequest = {
   me_id: string;
   merchant_request: string; // base64 AES-256-CBC
@@ -74,6 +81,9 @@ export type BuiltRequest = {
   actionUrl: string;
 };
 
+/**
+ * Factory configuration for creating a YagoutPay client instance.
+ */
 export type YagoutPayClientConfig = {
   merchantId: string;
   encryptionKey: string;
@@ -81,6 +91,9 @@ export type YagoutPayClientConfig = {
   actionUrlOverride?: string;
 };
 
+/**
+ * Raw response shape from the API integration endpoint.
+ */
 export type ApiIntegrationResponse = {
   merchantId: string;
   status: string; // e.g. Success / Failed
@@ -88,8 +101,38 @@ export type ApiIntegrationResponse = {
   response?: string; // base64 AES-256-CBC
 };
 
+/**
+ * Structured result returned by the SDK for API requests.
+ */
 export type ApiRequestResult = {
   raw: ApiIntegrationResponse;
   decryptedResponse?: string; // present if decryption attempted and succeeded
   endpoint: string;
 };
+
+/** Options for API calls made via the SDK. */
+export type SendApiOptions = {
+  endpoint?: string;
+  decryptResponse?: boolean;
+  fetchImpl?: typeof fetch;
+};
+
+/**
+ * Public client interface returned by createYagoutPay.
+ */
+export interface YagoutPayClient {
+  build(details: Omit<TransactionDetails, 'merchantId'>): BuiltRequest;
+  api: {
+    send(details: Omit<TransactionDetails, 'merchantId' | 'channel'>, options?: SendApiOptions): Promise<ApiRequestResult>;
+  };
+}
+
+/**
+ * pg_details structure for configuring payment options.
+ */
+export type PgDetails = Pick<TransactionDetails, 'pgId' | 'paymode' | 'schemeId' | 'walletType'>;
+
+/**
+ * A selectable payment option with a human-friendly label and pg_details.
+ */
+export type PgOption = PgDetails & { id: string; label: string };

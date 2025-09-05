@@ -1,9 +1,15 @@
 import type { TransactionDetails } from '../types';
 
+/**
+ * Join an array of (possibly undefined) strings with a pipe, replacing undefined with empty string.
+ */
 function joinPipe(fields: Array<string | undefined>): string {
   return fields.map((f) => f ?? '').join('|');
 }
 
+/**
+ * Build the sectioned merchant_request string for WEB/MOBILE flows.
+ */
 export function buildMerchantRequestPlain(details: TransactionDetails): string {
   const txn_details = joinPipe([
     details.aggregatorId,
@@ -95,7 +101,9 @@ export function buildMerchantRequestPlain(details: TransactionDetails): string {
   ].join('~');
 }
 
-// API integration: merchant_request is JSON with exact field names per spec
+/**
+ * Build the API merchantRequest JSON string with exact field names per spec.
+ */
 export function buildApiMerchantRequestPlain(details: TransactionDetails): string {
   const apiPayload = {
     card_details: {
