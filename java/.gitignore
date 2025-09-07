@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+**/build/
+**/out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS/macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Android/Java
+local.properties
+*.class
+
+# Temporary files
+*.tmp
+*.swp

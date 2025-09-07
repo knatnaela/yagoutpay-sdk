@@ -1,0 +1,8 @@
+{
+    "java.project.sourcePaths": [
+        "java/sdk/src/main/java",
+        "java/demo/src/main/java"
+    ],
+    "java.import.gradle.enabled": true,
+    "java.configuration.updateBuildConfiguration": "automatic"
+}
