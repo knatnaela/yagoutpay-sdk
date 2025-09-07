@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:yagoutpay_sdk/yagoutpay_sdk.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'yagout_checkout_page.dart';
+import 'yagout_api_demo_page.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -10,9 +10,21 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: const Text('YagoutPay SDK Example')),
-        body: const _Body(),
+      home: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('YagoutPay SDK Example'),
+            bottom: const TabBar(tabs: [
+              Tab(text: 'Hosted Form'),
+              Tab(text: 'API'),
+            ]),
+          ),
+          body: const TabBarView(children: [
+            _Body(),
+            YagoutApiDemoPage(),
+          ]),
+        ),
       ),
     );
   }
@@ -27,8 +39,6 @@ class _Body extends StatefulWidget {
 class _BodyState extends State<_Body> {
   String output = '';
   String _actionUrl = '';
-  String? _html;
-  final GlobalKey _webViewKey = GlobalKey();
   @override
   void initState() {
     super.initState();

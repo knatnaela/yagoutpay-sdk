@@ -115,7 +115,7 @@ class _YagoutCheckoutPageState extends State<YagoutCheckoutPage> {
                     );
                   }
                 }
-                return NavigationActionPolicy.CANCEL;
+                return NavigationActionPolicy.ALLOW;
               },
             ),
     );
