@@ -8,21 +8,8 @@ A Java SDK for assembling the gateway request, computing the canonical hash, per
 - SHA-256 hashing (canonical input)
 - Hosted form builder and API client in a simple, testable design
 
-## Coordinates (planned)
-```gradle
-implementation("com.yagoutpay:yagoutpay-sdk:0.1.0")
-```
-```xml
-<dependency>
-  <groupId>com.yagoutpay</groupId>
-  <artifactId>yagoutpay-sdk</artifactId>
-  <version>0.1.0</version>
-</dependency>
-```
-
-Until published to Maven Central:
-- Use this repository directly (includeBuild/flatDir), or
-- Run `./gradlew :sdk:publishToMavenLocal` and depend on `com.yagoutpay:yagoutpay-sdk:0.1.0`.
+## Installation
+Add the library to your build using your preferred dependency management approach in your environment.
 
 ## Quick start (Hosted Form)
 ```java
