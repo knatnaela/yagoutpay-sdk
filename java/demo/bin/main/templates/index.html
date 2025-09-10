@@ -1,0 +1,299 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YagoutPay • Checkout Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50">
+    <div class="max-w-5xl mx-auto p-6">
+        <header class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-semibold text-slate-800">YagoutPay Checkout</h1>
+            <nav class="text-sm text-slate-500">UAT</nav>
+        </header>
+
+        <div class="bg-white rounded-2xl shadow p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-medium text-slate-800">Make a payment</h2>
+                    <p class="text-slate-500 text-sm">Choose a mode and enter your details to proceed.</p>
+                </div>
+                <div class="inline-flex bg-slate-100 rounded-lg p-1">
+                    <button id="modeForm" class="px-3 py-1.5 text-sm rounded-md bg-white shadow">Hosted Form</button>
+                    <button id="modeApi" class="px-3 py-1.5 text-sm rounded-md text-slate-600">Direct API</button>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6 mt-6">
+                <div class="md:col-span-2">
+                    <div id="catalog" class="grid sm:grid-cols-2 gap-4"></div>
+                </div>
+                <div>
+                    <div class="border rounded-xl p-4">
+                        <div class="text-sm font-medium text-slate-700 mb-3">Your Cart</div>
+                        <div id="cart" class="space-y-3"></div>
+                        <div class="border-t my-3"></div>
+                        <div class="flex items-center justify-between text-sm mb-1"><span
+                                class="text-slate-600">Subtotal</span><span id="subtotal" class="font-medium">ETB
+                                0.00</span></div>
+                        <div class="flex items-center justify-between text-sm mb-3"><span
+                                class="text-slate-500">Shipping</span><span class="text-slate-500">Free</span></div>
+                        <div class="flex items-center justify-between text-base"><span
+                                class="text-slate-700">Total</span><span id="total" class="font-semibold">ETB
+                                0.00</span></div>
+                        <div class="mt-4 space-y-3">
+                            <div id="pgRow">
+                                <label for="pg" class="block text-sm text-slate-600 mb-1">Payment method</label>
+                                <select id="pg" class="w-full border rounded-lg px-3 py-2"></select>
+                            </div>
+                            <div id="emailRow">
+                                <input id="email" class="w-full border rounded-lg px-3 py-2" type="email"
+                                    placeholder="Email (optional)" />
+                            </div>
+                            <div id="mobileRow">
+                                <input id="mobile" class="w-full border rounded-lg px-3 py-2" type="text"
+                                    placeholder="Mobile (required for API)" />
+                            </div>
+                            <button id="continueBtn"
+                                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-4 py-2">Checkout</button>
+                            <p id="error" class="text-sm text-rose-600 hidden"></p>
+                        </div>
+                    </div>
+                    <div id="apiCard" class="hidden md:block mt-6">
+                        <div class="border rounded-xl p-4 h-full">
+                            <div class="text-sm text-slate-600 mb-2">API Response</div>
+                            <pre id="api_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                            <div class="text-xs text-slate-500 mt-2">Decrypted</div>
+                            <pre id="api_decrypted"
+                                class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center text-xs text-slate-500 mt-6">
+            For demo purposes only • Do not use real card details
+        </footer>
+
+        <form id="payForm" method="POST" class="hidden"></form>
+    </div>
+
+    <script th:inline="javascript">
+        const CATALOG = /*[[${catalog}]]*/[];
+        const PG_OPTIONS = [
+            { id: 'telebirr', label: 'Telebirr', pgId: 'telebirr', paymode: 'WALLET', schemeId: 'telebirr', walletType: 'telebirr' },
+            { id: 'cbe', label: 'CBE Birr', pgId: 'cbe', paymode: 'WALLET', schemeId: 'cbe', walletType: 'cbe' },
+            { id: 'amole', label: 'Amole', pgId: 'amole', paymode: 'WALLET', schemeId: 'amole', walletType: 'amole' },
+            { id: 'hellocash', label: 'HelloCash', pgId: 'hellocash', paymode: 'WALLET', schemeId: 'hellocash', walletType: 'hellocash' },
+            { id: 'mpesa', label: 'M-Pesa', pgId: 'mpesa', paymode: 'WALLET', schemeId: 'mpesa', walletType: 'mpesa' }
+        ];
+        let mode = 'form';
+        const qs = (s) => document.querySelector(s);
+        const show = (id, v = '') => (qs('#' + id).textContent = v || '');
+        const cart = new Map();
+        const btn = qs('#continueBtn');
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                if (!btn.dataset.oldText) btn.dataset.oldText = btn.textContent || 'Checkout';
+                btn.disabled = true;
+                btn.classList.add('opacity-60', 'cursor-not-allowed');
+                btn.textContent = 'Processing…';
+                btn.setAttribute('aria-busy', 'true');
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-not-allowed');
+                btn.textContent = btn.dataset.oldText || 'Checkout';
+                btn.removeAttribute('aria-busy');
+            }
+        }
+
+        function priceLabel(cents) { return 'ETB ' + (cents / 100).toFixed(2); }
+
+        function renderCatalog() {
+            const root = qs('#catalog');
+            root.innerHTML = '';
+            CATALOG.forEach(function (p) {
+                const div = document.createElement('div');
+                div.className = 'border rounded-xl overflow-hidden bg-white';
+                div.innerHTML = '' +
+                    '<div class="aspect-[4/3] bg-slate-100">' +
+                    '<img src="' + p.image + '" alt="' + p.name + '" class="w-full h-full object-cover"/>' +
+                    '</div>' +
+                    '<div class="p-3">' +
+                    '<div class="text-sm font-medium text-slate-800">' + p.name + '</div>' +
+                    '<div class="text-sm text-slate-600">' + priceLabel(p.priceCents) + '</div>' +
+                    '<button data-add="' + p.id + '" class="mt-3 inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-700">Add to cart</button>' +
+                    '</div>';
+                root.appendChild(div);
+            });
+            root.querySelectorAll('[data-add]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const id = btn.getAttribute('data-add');
+                    const current = cart.get(id) || 0;
+                    cart.set(id, current + 1);
+                    renderCart();
+                });
+            });
+        }
+
+        function renderCart() {
+            const root = qs('#cart');
+            root.innerHTML = '';
+            let subtotal = 0;
+            cart.forEach(function (qty, id) {
+                const p = CATALOG.find(function (x) { return x.id === id; });
+                if (!p) return;
+                const line = p.priceCents * qty;
+                subtotal += line;
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between';
+                div.innerHTML = '' +
+                    '<div>' +
+                    '<div class="text-sm text-slate-800">' + p.name + '</div>' +
+                    '<div class="text-xs text-slate-500">' + priceLabel(p.priceCents) + ' × ' + qty + '</div>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-2">' +
+                    '<button data-dec="' + id + '" class="px-2 py-1 rounded border">-</button>' +
+                    '<span class="w-6 text-center">' + qty + '</span>' +
+                    '<button data-inc="' + id + '" class="px-2 py-1 rounded border">+</button>' +
+                    '<div class="w-20 text-right text-sm font-medium">' + priceLabel(line) + '</div>' +
+                    '</div>';
+                root.appendChild(div);
+            });
+            if (cart.size === 0) {
+                root.innerHTML = '<div class="text-slate-500 text-sm">Your cart is empty.</div>';
+            }
+            qs('#subtotal').textContent = priceLabel(subtotal);
+            qs('#total').textContent = priceLabel(subtotal);
+
+            root.querySelectorAll('[data-inc]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const id = btn.getAttribute('data-inc');
+                    const current = cart.get(id) || 0;
+                    cart.set(id, current + 1);
+                    renderCart();
+                });
+            });
+            root.querySelectorAll('[data-dec]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const id = btn.getAttribute('data-dec');
+                    const current = cart.get(id) || 0;
+                    const next = Math.max(0, current - 1);
+                    if (next === 0) cart.delete(id); else cart.set(id, next);
+                    renderCart();
+                });
+            });
+        }
+
+        const setMode = (m) => {
+            mode = m;
+            if (m === 'form') {
+                qs('#modeForm').classList.add('bg-white', 'shadow');
+                qs('#modeForm').classList.remove('text-slate-600');
+                qs('#modeApi').classList.remove('bg-white', 'shadow');
+                qs('#modeApi').classList.add('text-slate-600');
+                qs('#apiCard').classList.add('hidden');
+                // hide inputs not needed for hosted form
+                qs('#pgRow').classList.add('hidden');
+                qs('#emailRow').classList.add('hidden');
+                qs('#mobileRow').classList.add('hidden');
+            } else {
+                qs('#modeApi').classList.add('bg-white', 'shadow');
+                qs('#modeApi').classList.remove('text-slate-600');
+                qs('#modeForm').classList.remove('bg-white', 'shadow');
+                qs('#modeForm').classList.add('text-slate-600');
+                qs('#apiCard').classList.remove('hidden');
+                // show inputs needed for API
+                qs('#pgRow').classList.remove('hidden');
+                qs('#emailRow').classList.remove('hidden');
+                qs('#mobileRow').classList.remove('hidden');
+            }
+        };
+        qs('#modeForm').addEventListener('click', (e) => { e.preventDefault(); setMode('form'); });
+        qs('#modeApi').addEventListener('click', (e) => { e.preventDefault(); setMode('api'); });
+        setMode('form');
+        renderCatalog();
+        renderCart();
+        // Populate payment methods
+        (function () {
+            const sel = qs('#pg');
+            sel.innerHTML = '';
+            PG_OPTIONS.forEach(function (opt, idx) {
+                const o = document.createElement('option');
+                o.value = opt.id;
+                o.textContent = opt.label;
+                if (idx === 0) o.selected = true;
+                sel.appendChild(o);
+            });
+        })();
+
+        qs('#continueBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            qs('#error').classList.add('hidden');
+            show('api_raw', '');
+            show('api_decrypted', '');
+
+            const body = {
+                cart: Array.from(cart.entries()).map(function (entry) { return { id: entry[0], qty: entry[1] }; }),
+                email: qs('#email').value.trim(),
+                mobile: qs('#mobile').value.trim(),
+                pgOptionId: qs('#pg').value,
+            };
+
+            if (!body.cart.length) {
+                qs('#error').textContent = 'Your cart is empty.';
+                qs('#error').classList.remove('hidden');
+                return;
+            }
+            if (mode === 'api' && !body.mobile) {
+                qs('#error').textContent = 'Please enter mobile number for API mode.';
+                qs('#error').classList.remove('hidden');
+                return;
+            }
+
+            try {
+                setLoading(true);
+                if (mode === 'form') {
+                    const resp = await fetch('/api/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const data = await resp.json();
+                    if (!data.success) throw new Error(data.error || 'Failed');
+                    const form = qs('#payForm');
+                    form.setAttribute('action', data.data.actionUrl);
+                    form.innerHTML = '';
+                    const fields = [
+                        ['me_id', data.data.me_id],
+                        ['merchant_request', data.data.merchant_request],
+                        ['hash', data.data.hash],
+                    ];
+                    fields.forEach(([name, value]) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = name;
+                        input.value = value;
+                        form.appendChild(input);
+                    });
+                    form.submit();
+                } else {
+                    const resp = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const data = await resp.json();
+                    if (!data.success) throw new Error(data.error || 'Failed');
+                    show('api_raw', JSON.stringify(data.data.raw, null, 2));
+                    show('api_decrypted', data.data.decryptedResponse || '');
+                }
+            } catch (err) {
+                qs('#error').textContent = err.message;
+                qs('#error').classList.remove('hidden');
+            } finally {
+                // In form mode, navigation occurs; this runs if still on page
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+
+</html>

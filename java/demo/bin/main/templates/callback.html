@@ -1,0 +1,29 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8" />
+    <title th:text="${title}">Callback</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50">
+    <div class="max-w-5xl mx-auto p-6">
+        <h2 class="text-xl font-semibold" th:class="${tone == 'success'} ? 'text-emerald-700' : 'text-rose-700'"
+            th:text="${title}">Callback</h2>
+        <div class="grid md:grid-cols-2 gap-6 mt-4">
+            <div class="bg-white rounded-xl shadow p-5">
+                <h3 class="font-medium text-slate-700 mb-3">Gateway Data (Raw)</h3>
+                <pre class="bg-slate-50 border rounded p-3 overflow-x-auto text-sm"
+                    th:text="${#maps.toString(raw)}">Raw data</pre>
+            </div>
+            <div class="bg-white rounded-xl shadow p-5">
+                <h3 class="font-medium text-slate-700 mb-3">Response Details</h3>
+                <div class="text-slate-500">Gateway response received</div>
+            </div>
+        </div>
+        <a href="/" class="inline-block mt-6 text-indigo-600">Back</a>
+    </div>
+</body>
+
+</html>
