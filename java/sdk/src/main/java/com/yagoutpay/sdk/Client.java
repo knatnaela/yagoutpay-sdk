@@ -7,6 +7,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
+import java.security.SecureRandom;
 
 /**
  * YagoutPay client for building hosted form payloads and sending API requests.
@@ -35,10 +40,49 @@ public final class Client {
         this.encryptionKey = cfg.encryptionKey;
         this.environment = cfg.environment == null ? Constants.Environment.UAT : cfg.environment;
         this.actionUrlOverride = cfg.actionUrlOverride;
-        this.http = HttpClient.newBuilder()
+
+        HttpClient.Builder httpBuilder = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(20))
-                .version(HttpClient.Version.HTTP_2)
-                .build();
+                .version(HttpClient.Version.HTTP_2);
+
+        // Configure SSL if insecure TLS is allowed
+        if (cfg.allowInsecureTls) {
+            try {
+                configureInsecureSSL(httpBuilder);
+            } catch (Exception e) {
+                System.err.println("Warning: Could not configure insecure SSL: " + e.getMessage());
+            }
+        }
+
+        this.http = httpBuilder.build();
+    }
+
+    private void configureInsecureSSL(HttpClient.Builder httpBuilder) throws Exception {
+        // Create a trust manager that accepts all certificates
+        TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                        // Accept all client certificates
+                    }
+
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                        // Accept all server certificates
+                    }
+                }
+        };
+
+        // Create SSL context with the trust manager
+        SSLContext sc = SSLContext.getInstance("TLS");
+        sc.init(null, trustAllCerts, new SecureRandom());
+
+        // Configure the HTTP client to use the custom SSL context
+        httpBuilder.sslContext(sc);
+
+        System.out.println("YagoutPay SDK: SSL certificate validation disabled (allowInsecureTls=true)");
     }
 
     /** Build the hosted form fields and related debug values. */
@@ -81,7 +125,11 @@ public final class Client {
                 .build();
 
         String plain = Assemble.buildApiMerchantRequestPlain(withDefaults);
+        System.out.println("Plain: " + plain);
+        System.out.println("Encryption Key: " + encryptionKey);
+        System.out.println("Merchant ID: " + merchantId);
         String merchantRequest = Crypto.aes256CbcEncrypt(plain, encryptionKey);
+        System.out.println("Merchant Request: " + merchantRequest);
 
         String body = OM.writeValueAsString(Map.of(
                 "merchantId", merchantId,
@@ -96,6 +144,7 @@ public final class Client {
                 .build();
 
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        System.out.println("API request response: " + resp.body());
         if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
             throw new RuntimeException("API request failed (" + resp.statusCode() + "): " + resp.body());
         }

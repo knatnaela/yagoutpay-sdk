@@ -73,7 +73,7 @@ final class Assemble {
             txn.put("country", d.country);
             txn.put("currency", d.currency);
             txn.put("transactionType", d.transactionType);
-            txn.put("sucessUrl", d.successUrl);
+            txn.put("successUrl", d.successUrl);
             txn.put("failureUrl", d.failureUrl);
             txn.put("channel", "API");
 

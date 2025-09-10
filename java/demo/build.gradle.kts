@@ -22,4 +22,13 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
+tasks.bootRun {
+    jvmArgs = listOf(
+        "-Dcom.sun.net.ssl.checkRevocation=false",
+        "-Dtrust_all_certificates=true",
+        "-Dmaven.wagon.http.ssl.insecure=true",
+        "-Dmaven.wagon.http.ssl.allowall=true"
+    )
+}
+
 

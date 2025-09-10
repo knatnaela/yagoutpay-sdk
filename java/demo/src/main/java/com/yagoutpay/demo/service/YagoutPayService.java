@@ -18,6 +18,9 @@ public class YagoutPayService {
     @Value("${yagout.merchant.key:}")
     private String merchantKey;
 
+    @Value("${yagout.allow.insecure.tls:true}")
+    private boolean allowInsecureTls;
+
     private Client client;
 
     @PostConstruct
@@ -30,6 +33,7 @@ public class YagoutPayService {
         cfg.merchantId = merchantId;
         cfg.encryptionKey = merchantKey;
         cfg.environment = Constants.Environment.UAT;
+        cfg.allowInsecureTls = allowInsecureTls; // Use configuration property
         client = new Client(cfg);
     }
 
@@ -75,6 +79,10 @@ public class YagoutPayService {
                 .channel("API")
                 .customerMobile(mobile)
                 .customerEmail(email)
+                .pgId(Constants.ApiDefaults.PG_ID)
+                .paymode(Constants.ApiDefaults.PAYMODE)
+                .schemeId(Constants.ApiDefaults.SCHEME_ID)
+                .walletType(Constants.ApiDefaults.WALLET_TYPE)
                 .build();
 
         Types.ApiRequestResult result = client.sendApi(details, null, true);
