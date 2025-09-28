@@ -1,6 +1,6 @@
 import express from 'express';
 import 'dotenv/config';
-import { buildFormPayload, aes256CbcDecrypt, createYagoutPay, sendApiIntegration, DEFAULT_PG_OPTIONS, API_DEFAULTS } from '@yagoutpay/sdk';
+import { buildFormPayload, aes256CbcDecrypt, createYagoutPay, sendApiIntegration, DEFAULT_PG_OPTIONS, API_DEFAULTS, createPaymentLinkClient, sendPaymentLink, sendPaymentByLink } from '@yagoutpay/sdk';
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -28,6 +28,17 @@ if (!MERCHANT_ID || !MERCHANT_KEY) {
 }
 
 const yagout = createYagoutPay({ merchantId: MERCHANT_ID, encryptionKey: MERCHANT_KEY, environment: 'uat' });
+const paymentLinks = createPaymentLinkClient({
+  merchantId: MERCHANT_ID,
+  encryptionKey: MERCHANT_KEY,
+  environment: 'uat',
+  reqUserId: 'yagou381',
+  staticDefaults: {
+    qr_transaction_amount: '500',
+    brandName: 'Demo Product',
+    mobile_no: '0965680964',
+  },
+});
 
 // Simple in-memory catalog (prices in cents)
 const CATALOG = [
@@ -72,10 +83,10 @@ app.get('/', (_req: express.Request, res: express.Response) => {
           <div class="inline-flex bg-slate-100 rounded-lg p-1">
             <button id="modeForm" class="px-3 py-1.5 text-sm rounded-md bg-white shadow">Hosted Form</button>
             <button id="modeApi" class="px-3 py-1.5 text-sm rounded-md text-slate-600">Direct API</button>
+            <button id="modeLink" class="px-3 py-1.5 text-sm rounded-md text-slate-600">Payment Link</button>
           </div>
         </div>
-
-        <div class="grid md:grid-cols-3 gap-6 mt-6">
+        <div id="gridMain" class="grid md:grid-cols-3 gap-6 mt-6">
           <div class="md:col-span-2">
             <div id="catalog" class="grid sm:grid-cols-2 gap-4"></div>
           </div>
@@ -108,6 +119,36 @@ app.get('/', (_req: express.Request, res: express.Response) => {
                 <pre id="api_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
                 <div class="text-xs text-slate-500 mt-2">Decrypted</div>
                 <pre id="api_decrypted" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="linkCard" class="hidden mt-6">
+          <div class="grid md:grid-cols-3 gap-6">
+            <div class="md:col-span-2">
+              <div class="border rounded-xl p-4">
+                <div class="text-sm font-medium text-slate-700 mb-3">Payment Link</div>
+                <div class="grid sm:grid-cols-2 gap-3">
+                  <input id="pl_amount" class="w-full border rounded-lg px-3 py-2" placeholder="Amount (e.g. 500)" />
+                  <input id="pl_order" class="w-full border rounded-lg px-3 py-2" placeholder="Order ID (default auto)" />
+                  <input id="pl_product" class="w-full border rounded-lg px-3 py-2" placeholder="Product/Description" />
+                  <input id="pl_mobile" class="w-full border rounded-lg px-3 py-2" placeholder="Mobile (e.g. 0912345678)" />
+                  <input id="pl_expiry" class="w-full border rounded-lg px-3 py-2" placeholder="Expiry (YYYY-MM-DD)" />
+                  <input id="pl_email" class="w-full border rounded-lg px-3 py-2" placeholder="Customer Email (optional)" />
+                </div>
+                <div class="mt-4 flex gap-3">
+                  <button id="pl_btn_dynamic" class="px-4 py-2 rounded-lg bg-indigo-600 text-white">Generate Dynamic Link</button>
+                  <button id="pl_btn_static" class="px-4 py-2 rounded-lg bg-slate-700 text-white">Generate Static Link</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="border rounded-xl p-4 h-full">
+                <div class="text-sm text-slate-600 mb-2">Payment Link Response</div>
+                <pre id="pl_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                <div class="text-xs text-slate-500 mt-2">Decrypted</div>
+                <pre id="pl_decrypted" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
               </div>
             </div>
           </div>
@@ -230,25 +271,43 @@ app.get('/', (_req: express.Request, res: express.Response) => {
           qs('#modeForm').classList.remove('text-slate-600');
           qs('#modeApi').classList.remove('bg-white','shadow');
           qs('#modeApi').classList.add('text-slate-600');
+          qs('#modeLink').classList.remove('bg-white','shadow');
+          qs('#modeLink').classList.add('text-slate-600');
           qs('#apiCard').classList.add('hidden');
           // hide inputs not needed for hosted form
           qs('#pgRow').classList.add('hidden');
           qs('#emailRow').classList.add('hidden');
           qs('#mobileRow').classList.add('hidden');
+          qs('#gridMain').classList.remove('hidden');
+          qs('#linkCard').classList.add('hidden');
         } else {
-          qs('#modeApi').classList.add('bg-white','shadow');
-          qs('#modeApi').classList.remove('text-slate-600');
           qs('#modeForm').classList.remove('bg-white','shadow');
           qs('#modeForm').classList.add('text-slate-600');
-          qs('#apiCard').classList.remove('hidden');
-          // show inputs needed for API
-          qs('#pgRow').classList.remove('hidden');
-          qs('#emailRow').classList.remove('hidden');
-          qs('#mobileRow').classList.remove('hidden');
+          qs('#modeApi').classList.remove('text-slate-600');
+          qs('#modeLink').classList.remove('text-slate-600');
+          if (m === 'api'){
+            qs('#modeApi').classList.add('bg-white','shadow');
+            qs('#modeLink').classList.remove('bg-white','shadow');
+            qs('#apiCard').classList.remove('hidden');
+            qs('#gridMain').classList.remove('hidden');
+            qs('#linkCard').classList.add('hidden');
+            // show inputs needed for API
+            qs('#pgRow').classList.remove('hidden');
+            qs('#emailRow').classList.remove('hidden');
+            qs('#mobileRow').classList.remove('hidden');
+          } else {
+            // link mode
+            qs('#modeLink').classList.add('bg-white','shadow');
+            qs('#modeApi').classList.remove('bg-white','shadow');
+            qs('#apiCard').classList.add('hidden');
+            qs('#gridMain').classList.add('hidden');
+            qs('#linkCard').classList.remove('hidden');
+          }
         }
       };
       qs('#modeForm').addEventListener('click', (e) => { e.preventDefault(); setMode('form'); });
       qs('#modeApi').addEventListener('click', (e) => { e.preventDefault(); setMode('api'); });
+      qs('#modeLink').addEventListener('click', (e) => { e.preventDefault(); setMode('link'); });
       setMode('form');
       renderCatalog();
       renderCart();
@@ -325,6 +384,33 @@ app.get('/', (_req: express.Request, res: express.Response) => {
           // In form mode, navigation occurs; this runs if still on page
           setLoading(false);
         }
+      });
+      // Payment Link actions
+      function plCollect() {
+        const amount = (qs('#pl_amount').value||'').trim();
+        const order = (qs('#pl_order').value||'').trim();
+        const product = (qs('#pl_product').value||'').trim();
+        const mobile = (qs('#pl_mobile').value||'').trim();
+        const expiry = (qs('#pl_expiry').value||'').trim();
+        const email = (qs('#pl_email').value||'').trim();
+        return { amount, order, product, mobile, expiry, email };
+      }
+      async function plCall(path, payload){
+        const resp = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Failed');
+        show('pl_raw', JSON.stringify(data.data.raw || data.data, null, 2));
+        show('pl_decrypted', data.data.decryptedResponse || '');
+      }
+      qs('#pl_btn_dynamic').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const v = plCollect();
+        await plCall('/links/dynamic', v);
+      });
+      qs('#pl_btn_static').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const v = plCollect();
+        await plCall('/links/static', v);
       });
     </script>
   </body>
@@ -443,6 +529,95 @@ app.post('/api/send', async (req: express.Request, res: express.Response) => {
         message: (c?.message as string) || undefined,
       });
     }
+    return res.status(400).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// Payment Link (Dynamic)
+app.post('/links/dynamic', async (req: express.Request, res: express.Response) => {
+  try {
+    const amount = String(req.body.amount || '').trim();
+    const product = String(req.body.product || 'Custom Payment').trim();
+    const mobile_no = String(req.body.mobile || '');
+    const customer_email = String(req.body.email || '');
+    const order_id = String(req.body.order || `ORDER_${Date.now()}`);
+    const expiry_date = String(req.body.expiry || '');
+    if (!amount) {
+      return res.status(400).json({ success: false, error: 'amount is required' });
+    }
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const plain = {
+      req_user_id: 'yagou381',
+      me_id: MERCHANT_ID,
+      amount,
+      customer_email,
+      mobile_no,
+      expiry_date,
+      media_type: ['API'],
+      order_id,
+      first_name: 'Demo',
+      last_name: 'User',
+      product,
+      dial_code: '+251',
+      failure_url: `${baseUrl}/failure`,
+      success_url: `${baseUrl}/success`,
+      country: 'ETH',
+      currency: 'ETB',
+    };
+    const result = await sendPaymentByLink(plain, MERCHANT_KEY, { environment: 'uat', fetchImpl: loggedFetch as unknown as typeof fetch });
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    return res.status(400).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// Payment Link (Static)
+app.post('/links/static', async (req: express.Request, res: express.Response) => {
+  try {
+    const amount = String(req.body.amount || '').trim();
+    const product = String(req.body.product || '').trim();
+    const mobile_no = String(req.body.mobile || '').trim();
+    const customer_email = String(req.body.email || '').trim();
+    const overrides: any = {};
+    if (amount) overrides.qr_transaction_amount = amount;
+    if (product) overrides.brandName = product;
+    if (mobile_no) overrides.mobile_no = mobile_no;
+    if (customer_email) overrides.store_email = customer_email;
+    const plain = {
+      ag_id: '',
+      ag_code: '',
+      ag_name: '',
+      req_user_id: 'yagou381',
+      me_code: MERCHANT_ID,
+      me_name: '',
+      qr_code_id: '',
+      brandName: overrides.brandName || 'Demo',
+      qr_name: '',
+      status: 'ACTIVE',
+      storeName: 'YP',
+      store_id: '',
+      token: '',
+      qr_transaction_amount: overrides.qr_transaction_amount || '1',
+      logo: '',
+      store_email: overrides.store_email || '',
+      mobile_no: overrides.mobile_no || '',
+      udf: '',
+      udfmerchant: '',
+      file_name: '',
+      from_date: '',
+      to_date: '',
+      file_extn: '',
+      file_url: '',
+      file: '',
+      original_file_name: '',
+      successURL: ``,
+      failureURL: ``,
+      addAll: '',
+      source: '',
+    };
+    const result = await sendPaymentLink(plain, MERCHANT_KEY, { environment: 'uat', fetchImpl: loggedFetch as unknown as typeof fetch });
+    return res.json({ success: true, data: result });
+  } catch (err) {
     return res.status(400).json({ success: false, error: (err as Error).message });
   }
 });

@@ -4,6 +4,7 @@
 - **Spec-accurate assembly**: Builds `merchant_request` in the exact sectioned format required by the gateway
 - **Modern crypto**: SHA‑256 + AES‑256‑CBC (static IV, PKCS7 padding)
 - **Forms made easy**: Generate an auto‑submit HTML form in one call
+- **Payment Links**: Create static or dynamic payment links via SDK helpers
 
 ### Install (monorepo usage)
 Add as a local dependency in your app package:
@@ -83,6 +84,12 @@ console.log(result.decryptedResponse); // optional plain response
 - encryptHashHex(hashHex, encryptionKey) → string
 - renderAutoSubmitForm(payload) → string
 
+#### Payment Links
+- sendPaymentLink(plain, encryptionKey, opts?) → Promise<PaymentLinkResult>
+- createPaymentLinkClient(config).sendStatic(overrides?) → Promise<PaymentLinkResult>
+- createPaymentLinkClient(config).sendDynamic(plain) → Promise<PaymentLinkResult>
+- buildPaymentLinkBody(plain, encryptionKey) → { request }
+
 ### merchant_request layout
 Joined with `~` as 9 sections:
 1) txn_details (10): ag_id|me_id|order_no|amount|country|currency|txn_type|success_url|failure_url|channel
@@ -107,3 +114,126 @@ yagout|202504290002|49340|1|ETH|ETB|SALE|http://localhost/YagoutPay/transaction/
 
 ### License
 MIT
+
+---
+
+## Payment Links
+
+YagoutPay Payment Links allow generating a pay URL/QR via the SDK using the gateway endpoint. The request payload is JSON, AES‑256‑CBC encrypted using your merchant key, and sent with the `me_id` header.
+
+### Endpoint
+- UAT: `https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse`
+- Prod: `https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse`
+
+Headers:
+- `me_id`: your merchant id (e.g. `202508080001`)
+
+Body (encrypted):
+```json
+{ "request": "<base64 AES-256-CBC of plain JSON>" }
+```
+
+### Encryption / Decryption
+- The SDK uses the same AES function for encryption and decryption:
+  - AES‑256‑CBC
+  - Static IV: `0123456789abcdef`
+  - PKCS7 padding (manual)
+  - Key provided as base64 string
+
+### Static Payment Link
+A predefined link for a fixed product/service.
+
+```ts
+import { createPaymentLinkClient } from '@yagoutpay/sdk';
+
+const links = createPaymentLinkClient({
+  merchantId: '202508080001',
+  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+  environment: 'uat',
+  reqUserId: 'yagou381',
+  staticDefaults: {
+    amount: '500',
+    order_id: 'ORDER_STATIC_001',
+    product: 'Premium Subscription',
+    currency: 'ETB',
+    country: 'ETH',
+    success_url: 'http://localhost:3000/success',
+    failure_url: 'http://localhost:3000/failure',
+    mobile_no: '0965680964',
+    dial_code: '+251',
+    expiry_date: '2025-12-31',
+    media_type: ['API'],
+    first_name: 'YagoutPay',
+    last_name: 'StaticLink',
+  },
+});
+
+const result = await links.sendStatic();
+console.log(result.endpoint, result.raw);
+```
+
+### Dynamic Payment Link
+Build links per transaction with flexible parameters.
+
+```ts
+import { createPaymentLinkClient } from '@yagoutpay/sdk';
+
+const links = createPaymentLinkClient({
+  merchantId: '202508080001',
+  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+  environment: 'uat',
+});
+
+const result = await links.sendDynamic({
+  req_user_id: 'yagou381',
+  amount: '1500',
+  order_id: 'ORDER_' + Date.now(),
+  product: 'Custom Invoice',
+  currency: 'ETB',
+  country: 'ETH',
+  success_url: 'http://localhost:3000/success',
+  failure_url: 'http://localhost:3000/failure',
+  mobile_no: '0965680964',
+  dial_code: '+251',
+  expiry_date: '2025-12-31',
+  media_type: ['API'],
+});
+
+console.log(result.endpoint, result.raw, result.decryptedResponse);
+```
+
+### Low-level helper
+You can also encrypt the plain payload and send it yourself:
+
+```ts
+import { buildPaymentLinkBody, sendPaymentLink } from '@yagoutpay/sdk';
+
+const plain = {
+  req_user_id: 'yagou381',
+  me_id: '202508080001',
+  amount: '500',
+  order_id: 'ORDER_STATIC_001',
+  currency: 'ETB',
+  country: 'ETH',
+  success_url: 'http://localhost:3000/success',
+  failure_url: 'http://localhost:3000/failure',
+  mobile_no: '0965680964',
+  dial_code: '+251',
+  expiry_date: '2025-12-31',
+  media_type: ['API'],
+};
+
+const body = buildPaymentLinkBody(plain, process.env.YAGOUT_MERCHANT_KEY!);
+const result = await sendPaymentLink(plain, process.env.YAGOUT_MERCHANT_KEY!);
+```
+
+### Testing steps (UAT)
+1. Set environment variables: `YAGOUT_MERCHANT_ID`, `YAGOUT_MERCHANT_KEY`
+2. In your app, instantiate `createPaymentLinkClient({...})` with `environment: 'uat'`
+3. Call `sendStatic()` or `sendDynamic({...})`
+4. Inspect `result.raw` for status/URL fields (provider dependent); if an encrypted `response` field is present, the SDK will try to decrypt it and place plain text in `result.decryptedResponse`.
+5. Verify the link or QR in the response opens the hosted payment page.
+
+Notes:
+- Do not log your merchant key.
+- Use UAT values and test numbers.

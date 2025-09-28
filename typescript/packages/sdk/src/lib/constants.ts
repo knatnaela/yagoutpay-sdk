@@ -8,6 +8,20 @@ export const API_URLS = {
     prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/apiRedirection/apiIntegration',
 } as const;
 
+/** Payment Link endpoints */
+export const PAYMENT_LINK_URLS = {
+    /** Static Link API */
+    uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse',
+    prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse',
+} as const;
+
+/** Dynamic Link (Payment By Link) endpoints */
+export const PAYMENT_BY_LINK_URLS = {
+    /** Payment Link / Link Payment API */
+    uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/paymentByLinkResponse',
+    prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/paymentByLinkResponse',
+} as const;
+
 export const API_DEFAULTS = {
     pgId: '67ee846571e740418d688c3f',
     paymode: 'WA',

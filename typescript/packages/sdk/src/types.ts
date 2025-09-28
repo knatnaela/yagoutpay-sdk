@@ -110,6 +110,77 @@ export type ApiRequestResult = {
   endpoint: string;
 };
 
+/**
+ * Payment Link request payload (plain before encryption).
+ * Updated to align with gateway static/dynamic QR payment link schema.
+ */
+export type PaymentLinkPlain = {
+  ag_id?: string;
+  ag_code?: string;
+  ag_name?: string;
+  req_user_id: string;
+  me_code: string;
+  me_name?: string;
+  qr_code_id?: string;
+  brandName?: string;
+  qr_name?: string;
+  status?: string; // e.g. ACTIVE
+  storeName?: string;
+  store_id?: string;
+  token?: string;
+  qr_transaction_amount: string;
+  logo?: string;
+  store_email?: string;
+  mobile_no?: string;
+  udf?: string;
+  udfmerchant?: string;
+  file_name?: string;
+  from_date?: string;
+  to_date?: string;
+  file_extn?: string;
+  file_url?: string;
+  file?: string;
+  original_file_name?: string;
+  successURL?: string;
+  failureURL?: string;
+  addAll?: string;
+  source?: string;
+};
+
+/** Encoded request body for Payment Link API. */
+export type PaymentLinkEncodedBody = {
+  request: string; // base64 AES-256-CBC of JSON.stringify(PaymentLinkPlain)
+};
+
+/** Unified result for Payment Link API invocation. */
+export type PaymentLinkResult = {
+  endpoint: string;
+  raw: unknown; // raw JSON from gateway
+  decryptedResponse?: string; // if response contains enc payload and decryption succeeds
+};
+
+/**
+ * Dynamic Link (Payment By Link) plain payload per documentation.
+ */
+export type PaymentByLinkPlain = {
+  req_user_id: string;
+  me_id: string;
+  amount: string;
+  customer_email?: string;
+  mobile_no?: string;
+  expiry_date?: string; // YYYY-MM-DD
+  media_type?: string[]; // e.g. ["API"]
+  order_id: string;
+  first_name?: string;
+  last_name?: string;
+  product: string;
+  dial_code?: string; // e.g. +251
+  failure_url?: string;
+  success_url?: string;
+  country?: string; // ETH
+  currency?: string; // ETB
+};
+
 /** Options for API calls made via the SDK. */
 export type SendApiOptions = {
   endpoint?: string;

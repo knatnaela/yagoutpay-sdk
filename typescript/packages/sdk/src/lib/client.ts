@@ -1,9 +1,9 @@
-import type { ApiRequestResult, ApiIntegrationResponse, BuiltRequest, TransactionDetails, YagoutPayClientConfig, YagoutPayClient, SendApiOptions } from '../types';
+import type { ApiRequestResult, ApiIntegrationResponse, BuiltRequest, TransactionDetails, YagoutPayClientConfig, YagoutPayClient, SendApiOptions, PaymentLinkPlain, PaymentLinkResult, PaymentLinkEncodedBody, PaymentByLinkPlain } from '../types';
 import { buildMerchantRequestPlain, buildApiMerchantRequestPlain } from './assemble';
 import { aes256CbcDecrypt, aes256CbcEncrypt } from './crypto';
 import { buildHashInput, generateSha256Hex, encryptHashHex } from './hash';
 import { validateTransactionDetails } from './validate';
-import { ACTION_URLS, API_URLS, API_DEFAULTS } from './constants';
+import { ACTION_URLS, API_URLS, API_DEFAULTS, PAYMENT_LINK_URLS, PAYMENT_BY_LINK_URLS } from './constants';
 
 // SendApiOptions is exported from types
 
@@ -108,4 +108,172 @@ export async function sendApiIntegration(
   }
 
   return { raw: json, decryptedResponse, endpoint };
+}
+
+/** Build Payment Link encoded body from plain payload using AES function. */
+export function buildPaymentLinkBody(plain: PaymentLinkPlain, encryptionKey: string): PaymentLinkEncodedBody {
+  const defaults: PaymentLinkPlain = {
+    ag_id: '', ag_code: '', ag_name: '',
+    req_user_id: '', me_code: '', me_name: '',
+    qr_code_id: '', brandName: '', qr_name: '',
+    status: '', storeName: '', store_id: '', token: '',
+    qr_transaction_amount: '', logo: '', store_email: '', mobile_no: '',
+    udf: '', udfmerchant: '', file_name: '', from_date: '', to_date: '',
+    file_extn: '', file_url: '', file: '', original_file_name: '',
+    successURL: '', failureURL: '', addAll: '', source: '',
+  };
+  const filled = { ...defaults, ...plain } as PaymentLinkPlain;
+  const merchantRequestPlain = JSON.stringify(filled);
+  console.log(merchantRequestPlain);
+  const merchantRequest = aes256CbcEncrypt(merchantRequestPlain, encryptionKey);
+  return { request: merchantRequest };
+}
+
+/** Build Payment By Link encoded body from plain payload using AES function. */
+export function buildPaymentByLinkBody(plain: PaymentByLinkPlain, encryptionKey: string): PaymentLinkEncodedBody {
+  const defaults: PaymentByLinkPlain = {
+    req_user_id: '', me_id: '', amount: '', order_id: '', product: '',
+    customer_email: '', mobile_no: '', expiry_date: '', media_type: [],
+    first_name: '', last_name: '', dial_code: '', failure_url: '', success_url: '',
+    country: '', currency: '',
+  };
+  const filled = { ...defaults, ...plain } as PaymentByLinkPlain;
+  const requestPlain = JSON.stringify(filled);
+  console.log(requestPlain);
+  const request = aes256CbcEncrypt(requestPlain, encryptionKey);
+  return { request };
+}
+
+/**
+ * Send Payment Link request (static or dynamic) to the gateway.
+ * Adds required header `me_id` and encrypts body using the same AES function.
+ */
+export async function sendPaymentLink(
+  plain: PaymentLinkPlain,
+  encryptionKey: string,
+  opts?: { environment?: 'uat' | 'prod'; endpointOverride?: string; useDynamicEndpoint?: boolean; fetchImpl?: typeof fetch }
+): Promise<PaymentLinkResult> {
+  const environment = opts?.environment ?? 'uat';
+  const endpoint = opts?.endpointOverride ?? (opts?.useDynamicEndpoint ? PAYMENT_BY_LINK_URLS[environment] : PAYMENT_LINK_URLS[environment]);
+  const merchantRequest = buildPaymentLinkBody(plain, encryptionKey);
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+
+  console.log(merchantRequest);
+
+  const resp = await fetchImpl(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      // Gateway expects merchant id in header as me_id; align to me_code field in schema
+      'me_id': plain.me_code,
+    },
+    body: JSON.stringify(merchantRequest),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`Payment Link request failed (${resp.status}): ${text || resp.statusText}`);
+  }
+
+  const json = await resp.json().catch(() => undefined);
+
+  // Try to decrypt known encrypted fields if present and base64
+  let decryptedResponse: string | undefined;
+  try {
+    const candidate = json && (json.response || json.data || json.payload || json.responseData);
+    const enc = typeof candidate === 'string' ? candidate : undefined;
+    if (enc) {
+      decryptedResponse = aes256CbcDecrypt(enc, encryptionKey);
+    }
+  } catch {
+    decryptedResponse = undefined;
+  }
+
+  return { endpoint, raw: json, decryptedResponse };
+}
+
+/** Send Payment By Link (dynamic) request to the gateway. */
+export async function sendPaymentByLink(
+  plain: PaymentByLinkPlain,
+  encryptionKey: string,
+  opts?: { environment?: 'uat' | 'prod'; endpointOverride?: string; fetchImpl?: typeof fetch }
+): Promise<PaymentLinkResult> {
+  const environment = opts?.environment ?? 'uat';
+  const endpoint = opts?.endpointOverride ?? PAYMENT_BY_LINK_URLS[environment];
+  const body = buildPaymentByLinkBody(plain, encryptionKey);
+  const fetchImpl = opts?.fetchImpl ?? fetch;
+
+  const resp = await fetchImpl(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'me_id': plain.me_id,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`Payment By Link request failed (${resp.status}): ${text || resp.statusText}`);
+  }
+
+  const json = await resp.json().catch(() => undefined);
+  let decryptedResponse: string | undefined;
+  try {
+    const candidate = json && (json.response || json.data || json.payload || json.responseData);
+    const enc = typeof candidate === 'string' ? candidate : undefined;
+    if (enc) {
+      decryptedResponse = aes256CbcDecrypt(enc, encryptionKey);
+    }
+  } catch {
+    decryptedResponse = undefined;
+  }
+  return { endpoint, raw: json, decryptedResponse };
+}
+
+export type PaymentLinkClient = {
+  /** Send a static payment link using default payload with optional overrides. */
+  sendStatic: (overrides?: Partial<PaymentLinkPlain> & { req_user_id?: string }) => Promise<PaymentLinkResult>;
+  /** Send a dynamic payment link providing all fields (me_id filled from config). */
+  sendDynamic: (plain: Omit<PaymentLinkPlain, 'me_code'>) => Promise<PaymentLinkResult>;
+  /** Build encoded body (AES) from plain. */
+  buildBody: (plain: PaymentLinkPlain) => PaymentLinkEncodedBody;
+};
+
+/** Factory for Payment Link operations (static and dynamic). */
+export function createPaymentLinkClient(config: {
+  merchantId: string;
+  encryptionKey: string;
+  environment?: 'uat' | 'prod';
+  reqUserId?: string;
+  /** Base payload used for static link (amount, currency, product, urls, etc). */
+  staticDefaults?: Partial<Omit<PaymentLinkPlain, 'me_code'>>;
+}): PaymentLinkClient {
+  const environment = config.environment ?? 'uat';
+  const reqUserId = config.reqUserId ?? "yagou381";
+  return {
+    async sendStatic(overrides) {
+      const plain: PaymentLinkPlain = {
+        req_user_id: overrides?.req_user_id ?? reqUserId,
+        qr_transaction_amount: String((config.staticDefaults?.qr_transaction_amount ?? '1')),
+        brandName: config.staticDefaults?.brandName,
+        successURL: config.staticDefaults?.successURL,
+        failureURL: config.staticDefaults?.failureURL,
+        ...config.staticDefaults,
+        ...overrides,
+        me_code: config.merchantId,
+      } as PaymentLinkPlain;
+      return sendPaymentLink(plain, config.encryptionKey, { environment });
+    },
+    async sendDynamic(plainNoMeId) {
+      const plain = { ...plainNoMeId, me_code: config.merchantId } as PaymentLinkPlain;
+      if (!plain.req_user_id) plain.req_user_id = reqUserId;
+      return sendPaymentLink(plain, config.encryptionKey, { environment });
+    },
+    buildBody(plain) {
+      return buildPaymentLinkBody(plain, config.encryptionKey);
+    },
+  };
 }
