@@ -400,7 +400,10 @@ app.get('/', (_req: express.Request, res: express.Response) => {
         const data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Failed');
         show('pl_raw', JSON.stringify(data.data.raw || data.data, null, 2));
-        show('pl_decrypted', data.data.decryptedResponse || '');
+        const dec = data.data.decryptedResponse || '';
+        let pretty = dec;
+        try { pretty = JSON.stringify(JSON.parse(dec), null, 2); } catch {}
+        show('pl_decrypted', pretty);
       }
       qs('#pl_btn_dynamic').addEventListener('click', async (e) => {
         e.preventDefault();

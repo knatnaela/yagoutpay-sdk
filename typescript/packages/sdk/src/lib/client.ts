@@ -176,12 +176,17 @@ export async function sendPaymentLink(
     throw new Error(`Payment Link request failed (${resp.status}): ${text || resp.statusText}`);
   }
 
-  const json = await resp.json().catch(() => undefined);
+  // Read body as text first to support non-JSON responses
+  const bodyText = await resp.text().catch(() => '');
+  let raw: unknown = bodyText;
+  let json: any | undefined;
+  try { json = bodyText ? JSON.parse(bodyText) : undefined; } catch { json = undefined; }
+  if (json !== undefined) raw = json;
 
-  // Try to decrypt known encrypted fields if present and base64
+  // Try to decrypt known fields or entire body if it's a string
   let decryptedResponse: string | undefined;
   try {
-    const candidate = json && (json.response || json.data || json.payload || json.responseData);
+    const candidate = (json && (json.response || json.data || json.payload || json.responseData)) ?? (typeof raw === 'string' ? raw : undefined);
     const enc = typeof candidate === 'string' ? candidate : undefined;
     if (enc) {
       decryptedResponse = aes256CbcDecrypt(enc, encryptionKey);
@@ -190,7 +195,7 @@ export async function sendPaymentLink(
     decryptedResponse = undefined;
   }
 
-  return { endpoint, raw: json, decryptedResponse };
+  return { endpoint, raw, decryptedResponse };
 }
 
 /** Send Payment By Link (dynamic) request to the gateway. */
@@ -219,10 +224,15 @@ export async function sendPaymentByLink(
     throw new Error(`Payment By Link request failed (${resp.status}): ${text || resp.statusText}`);
   }
 
-  const json = await resp.json().catch(() => undefined);
+  // Read body as text first to support non-JSON responses
+  const bodyText = await resp.text().catch(() => '');
+  let raw: unknown = bodyText;
+  let json: any | undefined;
+  try { json = bodyText ? JSON.parse(bodyText) : undefined; } catch { json = undefined; }
+  if (json !== undefined) raw = json;
   let decryptedResponse: string | undefined;
   try {
-    const candidate = json && (json.response || json.data || json.payload || json.responseData);
+    const candidate = (json && (json.response || json.data || json.payload || json.responseData)) ?? (typeof raw === 'string' ? raw : undefined);
     const enc = typeof candidate === 'string' ? candidate : undefined;
     if (enc) {
       decryptedResponse = aes256CbcDecrypt(enc, encryptionKey);
@@ -230,7 +240,7 @@ export async function sendPaymentByLink(
   } catch {
     decryptedResponse = undefined;
   }
-  return { endpoint, raw: json, decryptedResponse };
+  return { endpoint, raw, decryptedResponse };
 }
 
 export type PaymentLinkClient = {
