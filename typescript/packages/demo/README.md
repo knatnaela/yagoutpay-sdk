@@ -12,6 +12,11 @@ A private demo app that showcases the YagoutPay SDK. Build payloads, preview pla
   - hash_input / hash_hex / hash (encrypted)
 - Posts a form to the UAT action URL when you click “Pay Now”
 
+Also includes Payment Links:
+- Static Link: builds `PaymentLinkPlain`, encrypts and sends `{ request }` to static endpoint
+- Dynamic Link: builds `PaymentByLinkPlain` per doc, encrypts and sends `{ request }` to dynamic endpoint
+- Shows raw gateway response and the decrypted payload (pretty-printed if JSON)
+
 ### Prerequisites
 - Node.js 18+
 
@@ -34,6 +39,12 @@ npm run dev
 1) Enter amount and order number (defaults provided)
 2) Click “Build Payload” to generate and preview values
 3) Click “Pay Now” to post to the UAT gateway
+
+Payment Links:
+- Open the Payment Link tab
+- Enter amount/product (others optional)
+- Click “Generate Dynamic Link” or “Generate Static Link”
+- The response panel shows raw and decrypted output; look for `PaymentLink` and `LinkId` in decrypted data for dynamic
 
 ### Security notes
 - Encryption key stays on the server; never expose or log it

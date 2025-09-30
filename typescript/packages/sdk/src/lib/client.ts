@@ -5,10 +5,10 @@ import { buildHashInput, generateSha256Hex, encryptHashHex } from './hash';
 import { validateTransactionDetails } from './validate';
 import { ACTION_URLS, API_URLS, API_DEFAULTS, PAYMENT_LINK_URLS, PAYMENT_BY_LINK_URLS } from './constants';
 
-// SendApiOptions is exported from types
+// Public option type `SendApiOptions` is exported from ../types
 
 /**
- * Build the full set of form fields and related debug fields for the WEB flow.
+ * Build the WEB flow form payload and associated debug fields.
  */
 export function buildFormPayload(details: TransactionDetails, encryptionKey: string, actionUrl?: string): BuiltRequest {
   validateTransactionDetails(details);
@@ -71,13 +71,13 @@ export async function sendApiIntegration(
   const decryptResponse = options?.decryptResponse ?? true;
   const fetchImpl = options?.fetchImpl ?? fetch;
 
-  // Ensure API defaults while allowing overrides
+  // Apply API defaults while allowing explicit overrides
   const withDefaults: TransactionDetails = {
     ...API_DEFAULTS,
     ...details,
   } as TransactionDetails;
 
-  // Validate with API rules
+  // Validate using API-specific rules
   validateTransactionDetails(withDefaults);
 
   // Build request body
@@ -110,7 +110,7 @@ export async function sendApiIntegration(
   return { raw: json, decryptedResponse, endpoint };
 }
 
-/** Build Payment Link encoded body from plain payload using AES function. */
+/** Build the Payment Link request body from the plain payload using AES-256-CBC. */
 export function buildPaymentLinkBody(plain: PaymentLinkPlain, encryptionKey: string): PaymentLinkEncodedBody {
   const defaults: PaymentLinkPlain = {
     ag_id: '', ag_code: '', ag_name: '',
@@ -124,12 +124,11 @@ export function buildPaymentLinkBody(plain: PaymentLinkPlain, encryptionKey: str
   };
   const filled = { ...defaults, ...plain } as PaymentLinkPlain;
   const merchantRequestPlain = JSON.stringify(filled);
-  console.log(merchantRequestPlain);
   const merchantRequest = aes256CbcEncrypt(merchantRequestPlain, encryptionKey);
   return { request: merchantRequest };
 }
 
-/** Build Payment By Link encoded body from plain payload using AES function. */
+/** Build the Payment By Link (dynamic) request body from the plain payload using AES-256-CBC. */
 export function buildPaymentByLinkBody(plain: PaymentByLinkPlain, encryptionKey: string): PaymentLinkEncodedBody {
   const defaults: PaymentByLinkPlain = {
     req_user_id: '', me_id: '', amount: '', order_id: '', product: '',
@@ -139,7 +138,6 @@ export function buildPaymentByLinkBody(plain: PaymentByLinkPlain, encryptionKey:
   };
   const filled = { ...defaults, ...plain } as PaymentByLinkPlain;
   const requestPlain = JSON.stringify(filled);
-  console.log(requestPlain);
   const request = aes256CbcEncrypt(requestPlain, encryptionKey);
   return { request };
 }
@@ -158,8 +156,6 @@ export async function sendPaymentLink(
   const merchantRequest = buildPaymentLinkBody(plain, encryptionKey);
   const fetchImpl = opts?.fetchImpl ?? fetch;
 
-  console.log(merchantRequest);
-
   const resp = await fetchImpl(endpoint, {
     method: 'POST',
     headers: {
@@ -176,14 +172,14 @@ export async function sendPaymentLink(
     throw new Error(`Payment Link request failed (${resp.status}): ${text || resp.statusText}`);
   }
 
-  // Read body as text first to support non-JSON responses
+  // Read response as text to support non‑JSON payloads returned by the gateway
   const bodyText = await resp.text().catch(() => '');
   let raw: unknown = bodyText;
   let json: any | undefined;
   try { json = bodyText ? JSON.parse(bodyText) : undefined; } catch { json = undefined; }
   if (json !== undefined) raw = json;
 
-  // Try to decrypt known fields or entire body if it's a string
+  // Decrypt known fields or the entire body when it is an encrypted string
   let decryptedResponse: string | undefined;
   try {
     const candidate = (json && (json.response || json.data || json.payload || json.responseData)) ?? (typeof raw === 'string' ? raw : undefined);
@@ -198,7 +194,7 @@ export async function sendPaymentLink(
   return { endpoint, raw, decryptedResponse };
 }
 
-/** Send Payment By Link (dynamic) request to the gateway. */
+/** Send a Payment By Link (dynamic) request to the gateway. */
 export async function sendPaymentByLink(
   plain: PaymentByLinkPlain,
   encryptionKey: string,
@@ -224,7 +220,7 @@ export async function sendPaymentByLink(
     throw new Error(`Payment By Link request failed (${resp.status}): ${text || resp.statusText}`);
   }
 
-  // Read body as text first to support non-JSON responses
+  // Read response as text to support non‑JSON payloads returned by the gateway
   const bodyText = await resp.text().catch(() => '');
   let raw: unknown = bodyText;
   let json: any | undefined;
@@ -246,7 +242,7 @@ export async function sendPaymentByLink(
 export type PaymentLinkClient = {
   /** Send a static payment link using default payload with optional overrides. */
   sendStatic: (overrides?: Partial<PaymentLinkPlain> & { req_user_id?: string }) => Promise<PaymentLinkResult>;
-  /** Send a dynamic payment link providing all fields (me_id filled from config). */
+  /** Send a dynamic payment link; me_code is populated from the client configuration. */
   sendDynamic: (plain: Omit<PaymentLinkPlain, 'me_code'>) => Promise<PaymentLinkResult>;
   /** Build encoded body (AES) from plain. */
   buildBody: (plain: PaymentLinkPlain) => PaymentLinkEncodedBody;
@@ -258,7 +254,7 @@ export function createPaymentLinkClient(config: {
   encryptionKey: string;
   environment?: 'uat' | 'prod';
   reqUserId?: string;
-  /** Base payload used for static link (amount, currency, product, urls, etc). */
+  /** Base payload defaults for static link generation. */
   staticDefaults?: Partial<Omit<PaymentLinkPlain, 'me_code'>>;
 }): PaymentLinkClient {
   const environment = config.environment ?? 'uat';

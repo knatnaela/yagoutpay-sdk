@@ -85,10 +85,12 @@ console.log(result.decryptedResponse); // optional plain response
 - renderAutoSubmitForm(payload) → string
 
 #### Payment Links
-- sendPaymentLink(plain, encryptionKey, opts?) → Promise<PaymentLinkResult>
+- sendPaymentLink(plain: PaymentLinkPlain, encryptionKey, opts?) → Promise<PaymentLinkResult>
+- sendPaymentByLink(plain: PaymentByLinkPlain, encryptionKey, opts?) → Promise<PaymentLinkResult>
 - createPaymentLinkClient(config).sendStatic(overrides?) → Promise<PaymentLinkResult>
 - createPaymentLinkClient(config).sendDynamic(plain) → Promise<PaymentLinkResult>
 - buildPaymentLinkBody(plain, encryptionKey) → { request }
+- buildPaymentByLinkBody(plain, encryptionKey) → { request }
 
 ### merchant_request layout
 Joined with `~` as 9 sections:
@@ -140,7 +142,7 @@ Body (encrypted):
   - PKCS7 padding (manual)
   - Key provided as base64 string
 
-### Static Payment Link
+### Static Payment Link (PaymentLinkPlain)
 A predefined link for a fixed product/service.
 
 ```ts
@@ -172,20 +174,15 @@ const result = await links.sendStatic();
 console.log(result.endpoint, result.raw);
 ```
 
-### Dynamic Payment Link
+### Dynamic Payment Link (PaymentByLinkPlain)
 Build links per transaction with flexible parameters.
 
 ```ts
-import { createPaymentLinkClient } from '@yagoutpay/sdk';
+import { sendPaymentByLink } from '@yagoutpay/sdk';
 
-const links = createPaymentLinkClient({
-  merchantId: '202508080001',
-  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
-  environment: 'uat',
-});
-
-const result = await links.sendDynamic({
+const result = await sendPaymentByLink({
   req_user_id: 'yagou381',
+  me_id: '202508080001',
   amount: '1500',
   order_id: 'ORDER_' + Date.now(),
   product: 'Custom Invoice',
@@ -197,7 +194,7 @@ const result = await links.sendDynamic({
   dial_code: '+251',
   expiry_date: '2025-12-31',
   media_type: ['API'],
-});
+}, process.env.YAGOUT_MERCHANT_KEY!, { environment: 'uat' });
 
 console.log(result.endpoint, result.raw, result.decryptedResponse);
 ```
