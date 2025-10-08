@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @Controller
 public class CheckoutController {
@@ -40,6 +41,82 @@ public class CheckoutController {
 
         model.addAttribute("catalog", catalog);
         return "index";
+    }
+
+    @PostMapping("/links/dynamic")
+    @ResponseBody
+    public ApiResponse<Map<String, Object>> generateDynamicLink(@RequestBody Map<String, Object> body,
+            HttpServletRequest httpRequest) {
+        try {
+            String amount = String.valueOf(body.getOrDefault("amount", "")).trim();
+            String order = String.valueOf(body.getOrDefault("order", "")).trim();
+            String product = String.valueOf(body.getOrDefault("product", "Custom Payment")).trim();
+            String email = String.valueOf(body.getOrDefault("email", "")).trim();
+            String mobile = String.valueOf(body.getOrDefault("mobile", "")).trim();
+
+            if (amount.isEmpty()) {
+                return new ApiResponse<>(false, "amount is required");
+            }
+
+            if (order.isEmpty()) {
+                order = "ORDER_" + System.currentTimeMillis();
+            }
+
+            String baseUrl = httpRequest.getScheme() + "://" + httpRequest.getServerName() +
+                    ((httpRequest.getServerPort() != 80 && httpRequest.getServerPort() != 443)
+                            ? ":" + httpRequest.getServerPort()
+                            : "");
+
+            Map<String, Object> data = new HashMap<>();
+            Map<String, Object> result = yagoutPayService.sendPaymentLinkDynamic(
+                    amount,
+                    order,
+                    product,
+                    email,
+                    mobile,
+                    baseUrl + "/success",
+                    baseUrl + "/failure");
+            data.putAll(result);
+            return new ApiResponse<>(true, data);
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            return new ApiResponse<>(false, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
+    }
+
+    @PostMapping("/links/static")
+    @ResponseBody
+    public ApiResponse<Map<String, Object>> generateStaticLink(@RequestBody Map<String, Object> body,
+            HttpServletRequest httpRequest) {
+        try {
+            String amount = String.valueOf(body.getOrDefault("amount", "")).trim();
+            String email = String.valueOf(body.getOrDefault("email", "")).trim();
+            String mobile = String.valueOf(body.getOrDefault("mobile", "")).trim();
+
+            if (amount.isEmpty()) {
+                return new ApiResponse<>(false, "amount is required");
+            }
+
+            String baseUrl = httpRequest.getScheme() + "://" + httpRequest.getServerName() +
+                    ((httpRequest.getServerPort() != 80 && httpRequest.getServerPort() != 443)
+                            ? ":" + httpRequest.getServerPort()
+                            : "");
+
+            Map<String, Object> data = new HashMap<>();
+            Map<String, Object> result = yagoutPayService.sendPaymentLinkStatic(
+                    amount,
+                    email,
+                    mobile,
+                    baseUrl + "/success",
+                    baseUrl + "/failure");
+            data.putAll(result);
+            return new ApiResponse<>(true, data);
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            return new ApiResponse<>(false, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+        }
     }
 
     @PostMapping("/api/build")
@@ -74,7 +151,9 @@ public class CheckoutController {
 
             return new ApiResponse<>(true, data);
         } catch (Exception e) {
-            return new ApiResponse<>(false, e.getMessage());
+            System.err.println("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            return new ApiResponse<>(false, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         }
     }
 
@@ -108,7 +187,9 @@ public class CheckoutController {
 
             return new ApiResponse<>(true, data);
         } catch (Exception e) {
-            return new ApiResponse<>(false, e.getMessage());
+            System.err.println("Error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            return new ApiResponse<>(false, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
         }
     }
 

@@ -173,3 +173,122 @@ class ApiRequestResult {
     required this.endpoint,
   });
 }
+
+/// Plain payload for static Payment Link requests.
+class PaymentLinkPlain {
+  String ag_id = '';
+  String ag_code = '';
+  String ag_name = '';
+  late String req_user_id;
+  late String me_code;
+  String me_name = '';
+  String qr_code_id = '';
+  String brandName = '';
+  String qr_name = '';
+  String status = '';
+  String storeName = '';
+  String store_id = '';
+  String token = '';
+  late String qr_transaction_amount;
+  String logo = '';
+  String store_email = '';
+  String mobile_no = '';
+  String udf = '';
+  String udfmerchant = '';
+  String file_name = '';
+  String from_date = '';
+  String to_date = '';
+  String file_extn = '';
+  String file_url = '';
+  String file = '';
+  String original_file_name = '';
+  String successURL = '';
+  String failureURL = '';
+  String addAll = '';
+  String source = '';
+
+  Map<String, dynamic> toJson() => {
+        'ag_id': ag_id,
+        'ag_code': ag_code,
+        'ag_name': ag_name,
+        'req_user_id': req_user_id,
+        'me_code': me_code,
+        'me_name': me_name,
+        'qr_code_id': qr_code_id,
+        'brandName': brandName,
+        'qr_name': qr_name,
+        'status': status,
+        'storeName': storeName,
+        'store_id': store_id,
+        'token': token,
+        'qr_transaction_amount': qr_transaction_amount,
+        'logo': logo,
+        'store_email': store_email,
+        'mobile_no': mobile_no,
+        'udf': udf,
+        'udfmerchant': udfmerchant,
+        'file_name': file_name,
+        'from_date': from_date,
+        'to_date': to_date,
+        'file_extn': file_extn,
+        'file_url': file_url,
+        'file': file,
+        'original_file_name': original_file_name,
+        'successURL': successURL,
+        'failureURL': failureURL,
+        'addAll': addAll,
+        'source': source,
+      };
+}
+
+/// Plain payload for dynamic Payment By Link requests.
+class PaymentByLinkPlain {
+  late String req_user_id;
+  late String me_id;
+  late String amount;
+  String? customer_email = '';
+  String? mobile_no = '';
+  String? expiry_date = '';
+  List<String>? media_type = const [];
+  late String order_id;
+  String? first_name = '';
+  String? last_name = '';
+  late String product;
+  String? dial_code = '';
+  String? failure_url = '';
+  String? success_url = '';
+  String? country = '';
+  String? currency = '';
+
+  Map<String, dynamic> toJson() => {
+        'req_user_id': req_user_id,
+        'me_id': me_id,
+        'amount': amount,
+        'customer_email': customer_email,
+        'mobile_no': mobile_no,
+        'expiry_date': expiry_date,
+        'media_type': media_type,
+        'order_id': order_id,
+        'first_name': first_name,
+        'last_name': last_name,
+        'product': product,
+        'dial_code': dial_code,
+        'failure_url': failure_url,
+        'success_url': success_url,
+        'country': country,
+        'currency': currency,
+      };
+}
+
+/// Result from Payment Link API calls.
+class PaymentLinkResult {
+  final dynamic raw;
+  final String? decryptedResponse;
+  final String endpoint;
+
+  const PaymentLinkResult({
+    required this.raw,
+    required this.decryptedResponse,
+    required this.endpoint,
+  });
+}

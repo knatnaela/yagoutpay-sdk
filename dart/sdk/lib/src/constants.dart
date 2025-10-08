@@ -11,6 +11,18 @@ class Endpoints {
     Environment.uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/apiRedirection/apiIntegration',
     Environment.prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/apiRedirection/apiIntegration',
   };
+
+  /// Static Payment Link endpoints
+  static const Map<Environment, String> paymentLinkUrls = {
+    Environment.uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse',
+    Environment.prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse',
+  };
+
+  /// Dynamic Payment By Link endpoints
+  static const Map<Environment, String> paymentByLinkUrls = {
+    Environment.uat: 'https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/paymentByLinkResponse',
+    Environment.prod: 'https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/paymentByLinkResponse',
+  };
 }
 
 /// Default pg_details used for API flow.

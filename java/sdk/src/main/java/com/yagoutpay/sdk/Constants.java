@@ -24,6 +24,20 @@ public final class Constants {
                 : "https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/apiRedirection/apiIntegration";
     }
 
+    /** Static Payment Link endpoint for the given environment. */
+    public static String paymentLinkUrl(Environment env) {
+        return env == Environment.PROD
+                ? "https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse"
+                : "https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse";
+    }
+
+    /** Dynamic Payment By Link endpoint for the given environment. */
+    public static String paymentByLinkUrl(Environment env) {
+        return env == Environment.PROD
+                ? "https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/paymentByLinkResponse"
+                : "https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/paymentByLinkResponse";
+    }
+
     /** Default pg_details used for API flow. */
     public static final class ApiDefaults {
         public static final String PG_ID = "67ee846571e740418d688c3f";

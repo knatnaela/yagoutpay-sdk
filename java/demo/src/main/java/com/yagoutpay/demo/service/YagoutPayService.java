@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -25,7 +27,7 @@ public class YagoutPayService {
 
     @PostConstruct
     public void init() {
-        if (merchantId.isEmpty() || merchantKey.isEmpty()) {
+        if (merchantId == null || merchantId.isEmpty() || merchantKey == null || merchantKey.isEmpty()) {
             throw new IllegalStateException("Missing YAGOUT_MERCHANT_ID or YAGOUT_MERCHANT_KEY environment variables");
         }
 
@@ -33,7 +35,7 @@ public class YagoutPayService {
         cfg.merchantId = merchantId;
         cfg.encryptionKey = merchantKey;
         cfg.environment = Constants.Environment.UAT;
-        cfg.allowInsecureTls = allowInsecureTls; // Use configuration property
+        cfg.allowInsecureTls = allowInsecureTls;
         client = new Client(cfg);
     }
 
@@ -90,5 +92,64 @@ public class YagoutPayService {
                 "raw", result.raw,
                 "endpoint", result.endpoint,
                 "decryptedResponse", result.decryptedResponse);
+    }
+
+    public Map<String, Object> sendPaymentLinkStatic(String amount, String email, String mobile, String successUrl,
+            String failureUrl) throws Exception {
+        if (merchantId == null) {
+            throw new IllegalStateException("merchantId is null!");
+        }
+        if (client == null) {
+            throw new IllegalStateException("client is null!");
+        }
+
+        Types.PaymentLinkPlain plain = new Types.PaymentLinkPlain();
+        plain.req_user_id = "yagou381";
+        plain.me_code = merchantId;
+        plain.qr_transaction_amount = amount;
+        plain.brandName = "Demo Product";
+        plain.status = "ACTIVE";
+        plain.storeName = "YP";
+        plain.store_email = email;
+        plain.mobile_no = mobile;
+        plain.successURL = successUrl;
+        plain.failureURL = failureUrl;
+
+        Types.PaymentLinkResult result = client.sendPaymentLinkResult(plain, null);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("endpoint", result.endpoint);
+        response.put("raw", result.raw);
+        response.put("decryptedResponse", result.decryptedResponse);
+        return response;
+    }
+
+    public Map<String, Object> sendPaymentLinkDynamic(String amount, String orderId, String product, String email,
+            String mobile, String successUrl, String failureUrl) throws Exception {
+        Types.PaymentByLinkPlain plain = new Types.PaymentByLinkPlain();
+        plain.req_user_id = "yagou381";
+        plain.me_id = merchantId;
+        plain.amount = amount;
+        plain.order_id = orderId;
+        plain.product = product;
+        plain.customer_email = email;
+        plain.mobile_no = mobile;
+        plain.first_name = "Demo";
+        plain.last_name = "User";
+        plain.dial_code = "+251";
+        plain.expiry_date = "2025-10-15";
+        plain.success_url = successUrl;
+        plain.failure_url = failureUrl;
+        plain.currency = "ETB";
+        plain.country = "ETH";
+        plain.media_type = new String[] { "API" };
+
+        Types.PaymentLinkResult result = client.sendPaymentByLinkResult(plain, null);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("endpoint", result.endpoint);
+        response.put("raw", result.raw);
+        response.put("decryptedResponse", result.decryptedResponse);
+        return response;
     }
 }

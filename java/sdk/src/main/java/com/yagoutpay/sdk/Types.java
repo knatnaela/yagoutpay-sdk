@@ -7,6 +7,69 @@ public final class Types {
     private Types() {
     }
 
+    /** Plain payload for static Payment Link requests. */
+    public static final class PaymentLinkPlain {
+        public String ag_id = "";
+        public String ag_code = "";
+        public String ag_name = "";
+        public String req_user_id = "";
+        public String me_code = "";
+        public String me_name = "";
+        public String qr_code_id = "";
+        public String brandName = "";
+        public String qr_name = "";
+        public String status = "";
+        public String storeName = "";
+        public String store_id = "";
+        public String token = "";
+        public String qr_transaction_amount = "";
+        public String logo = "";
+        public String store_email = "";
+        public String mobile_no = "";
+        public String udf = "";
+        public String udfmerchant = "";
+        public String file_name = "";
+        public String from_date = "";
+        public String to_date = "";
+        public String file_extn = "";
+        public String file_url = "";
+        public String file = "";
+        public String original_file_name = "";
+        public String successURL = "";
+        public String failureURL = "";
+        public String addAll = "";
+        public String source = "";
+    }
+
+    /** Plain payload for dynamic Payment By Link requests. */
+    public static final class PaymentByLinkPlain {
+        public String req_user_id = "";
+        public String me_id = "";
+        public String amount = "";
+        public String customer_email = "";
+        public String mobile_no = "";
+        public String expiry_date = "";
+        public String[] media_type = new String[0];
+        public String order_id = "";
+        public String first_name = "";
+        public String last_name = "";
+        public String product = "";
+        public String dial_code = "";
+        public String failure_url = "";
+        public String success_url = "";
+        public String country = "";
+        public String currency = "";
+    }
+
+    /** Encoded request body format sent to link endpoints. */
+    public static final class PaymentLinkEncodedBody {
+        public final String request;
+
+        public PaymentLinkEncodedBody(String request) {
+            this.request = request;
+        }
+    }
+
     /**
      * Canonical transaction input used to build both hosted form and API payloads.
      * Use {@link Builder} to construct immutable instances.
@@ -422,11 +485,24 @@ public final class Types {
     }
 
     public static final class ApiRequestResult {
-        public final ApiIntegrationResponse raw;
+        public final Object raw;
         public final String decryptedResponse;
         public final String endpoint;
 
-        public ApiRequestResult(ApiIntegrationResponse raw, String decryptedResponse, String endpoint) {
+        public ApiRequestResult(Object raw, String decryptedResponse, String endpoint) {
+            this.raw = raw;
+            this.decryptedResponse = decryptedResponse;
+            this.endpoint = endpoint;
+        }
+    }
+
+    /** Result from Payment Link API calls. */
+    public static final class PaymentLinkResult {
+        public final Object raw;
+        public final String decryptedResponse;
+        public final String endpoint;
+
+        public PaymentLinkResult(Object raw, String decryptedResponse, String endpoint) {
             this.raw = raw;
             this.decryptedResponse = decryptedResponse;
             this.endpoint = endpoint;

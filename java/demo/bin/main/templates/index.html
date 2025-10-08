@@ -24,11 +24,12 @@
                 <div class="inline-flex bg-slate-100 rounded-lg p-1">
                     <button id="modeForm" class="px-3 py-1.5 text-sm rounded-md bg-white shadow">Hosted Form</button>
                     <button id="modeApi" class="px-3 py-1.5 text-sm rounded-md text-slate-600">Direct API</button>
+                    <button id="modeLink" class="px-3 py-1.5 text-sm rounded-md text-slate-600">Payment Link</button>
                 </div>
             </div>
 
             <div class="grid md:grid-cols-3 gap-6 mt-6">
-                <div class="md:col-span-2">
+                <div class="md:col-span-2" id="gridMain">
                     <div id="catalog" class="grid sm:grid-cols-2 gap-4"></div>
                 </div>
                 <div>
@@ -69,6 +70,36 @@
                             <div class="text-xs text-slate-500 mt-2">Decrypted</div>
                             <pre id="api_decrypted"
                                 class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                        </div>
+                    </div>
+                    <div id="linkCard" class="hidden md:block mt-6">
+                        <div class="border rounded-xl p-4 h-full">
+                            <div class="text-sm text-slate-600 mb-2">Payment Link</div>
+                            <div class="grid sm:grid-cols-2 gap-3 mb-3">
+                                <input id="pl_amount" class="w-full border rounded-lg px-3 py-2"
+                                    placeholder="Amount (e.g. 500)" />
+                                <input id="pl_order" class="w-full border rounded-lg px-3 py-2"
+                                    placeholder="Order ID (optional)" />
+                                <input id="pl_product" class="w-full border rounded-lg px-3 py-2"
+                                    placeholder="Product/Description" />
+                                <input id="pl_mobile" class="w-full border rounded-lg px-3 py-2"
+                                    placeholder="Mobile (e.g. 0912345678)" />
+                                <input id="pl_email" class="w-full border rounded-lg px-3 py-2"
+                                    placeholder="Customer Email (optional)" />
+                            </div>
+                            <div class="flex gap-3">
+                                <button id="pl_btn_dynamic"
+                                    class="px-4 py-2 rounded-lg bg-indigo-600 text-white">Generate Dynamic Link</button>
+                                <button id="pl_btn_static" class="px-4 py-2 rounded-lg bg-slate-700 text-white">Generate
+                                    Static Link</button>
+                            </div>
+                            <div class="mt-4">
+                                <div class="text-sm text-slate-600 mb-2">Response</div>
+                                <pre id="pl_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                                <div class="text-xs text-slate-500 mt-2">Decrypted</div>
+                                <pre id="pl_decrypted"
+                                    class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -193,25 +224,44 @@
                 qs('#modeForm').classList.remove('text-slate-600');
                 qs('#modeApi').classList.remove('bg-white', 'shadow');
                 qs('#modeApi').classList.add('text-slate-600');
+                qs('#modeLink').classList.remove('bg-white', 'shadow');
+                qs('#modeLink').classList.add('text-slate-600');
                 qs('#apiCard').classList.add('hidden');
+                qs('#linkCard').classList.add('hidden');
                 // hide inputs not needed for hosted form
                 qs('#pgRow').classList.add('hidden');
                 qs('#emailRow').classList.add('hidden');
                 qs('#mobileRow').classList.add('hidden');
-            } else {
+                qs('#gridMain').classList.remove('hidden');
+            } else if (m === 'api') {
                 qs('#modeApi').classList.add('bg-white', 'shadow');
                 qs('#modeApi').classList.remove('text-slate-600');
                 qs('#modeForm').classList.remove('bg-white', 'shadow');
                 qs('#modeForm').classList.add('text-slate-600');
+                qs('#modeLink').classList.remove('bg-white', 'shadow');
+                qs('#modeLink').classList.add('text-slate-600');
                 qs('#apiCard').classList.remove('hidden');
+                qs('#linkCard').classList.add('hidden');
+                qs('#gridMain').classList.remove('hidden');
                 // show inputs needed for API
                 qs('#pgRow').classList.remove('hidden');
                 qs('#emailRow').classList.remove('hidden');
                 qs('#mobileRow').classList.remove('hidden');
+            } else if (m === 'link') {
+                qs('#modeLink').classList.add('bg-white', 'shadow');
+                qs('#modeLink').classList.remove('text-slate-600');
+                qs('#modeForm').classList.remove('bg-white', 'shadow');
+                qs('#modeForm').classList.add('text-slate-600');
+                qs('#modeApi').classList.remove('bg-white', 'shadow');
+                qs('#modeApi').classList.add('text-slate-600');
+                qs('#apiCard').classList.add('hidden');
+                qs('#gridMain').classList.add('hidden');
+                qs('#linkCard').classList.remove('hidden');
             }
         };
         qs('#modeForm').addEventListener('click', (e) => { e.preventDefault(); setMode('form'); });
         qs('#modeApi').addEventListener('click', (e) => { e.preventDefault(); setMode('api'); });
+        qs('#modeLink').addEventListener('click', (e) => { e.preventDefault(); setMode('link'); });
         setMode('form');
         renderCatalog();
         renderCart();
@@ -227,6 +277,39 @@
                 sel.appendChild(o);
             });
         })();
+
+        // Payment Link helpers
+        function plCollect() {
+            const amount = (qs('#pl_amount').value || '').trim();
+            const order = (qs('#pl_order').value || '').trim();
+            const product = (qs('#pl_product').value || '').trim();
+            const mobile = (qs('#pl_mobile').value || '').trim();
+            const email = (qs('#pl_email').value || '').trim();
+            return { amount, order, product, mobile, email };
+        }
+
+        async function plCall(path, payload) {
+            const resp = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const data = await resp.json();
+            if (!data.success) throw new Error(data.error || 'Failed');
+            show('pl_raw', JSON.stringify(data.data.raw || data.data, null, 2));
+            const dec = data.data.decryptedResponse || '';
+            let pretty = dec;
+            try { pretty = JSON.stringify(JSON.parse(dec), null, 2); } catch { }
+            show('pl_decrypted', pretty);
+        }
+
+        qs('#pl_btn_dynamic').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const v = plCollect();
+            await plCall('/links/dynamic', v);
+        });
+
+        qs('#pl_btn_static').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const v = plCollect();
+            await plCall('/links/static', v);
+        });
 
         qs('#continueBtn').addEventListener('click', async (e) => {
             e.preventDefault();

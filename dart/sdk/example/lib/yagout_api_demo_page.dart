@@ -12,6 +12,9 @@ class YagoutApiDemoPage extends StatefulWidget {
 
 class _YagoutApiDemoPageState extends State<YagoutApiDemoPage> {
   final TextEditingController _mobileCtrl = TextEditingController();
+  final TextEditingController _amountCtrl = TextEditingController(text: '500');
+  final TextEditingController _productCtrl = TextEditingController(text: 'Demo Product');
+  final TextEditingController _emailCtrl = TextEditingController();
   String _raw = '';
   String _decrypted = '';
   String _error = '';
@@ -79,6 +82,74 @@ class _YagoutApiDemoPageState extends State<YagoutApiDemoPage> {
     }
   }
 
+  Future<void> _sendStaticLink() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+      _raw = '';
+      _decrypted = '';
+    });
+    try {
+      final plain = PaymentLinkPlain()
+        ..req_user_id = 'yagou381'
+        ..me_code = _merchantId
+        ..qr_transaction_amount = _amountCtrl.text.trim()
+        ..brandName = _productCtrl.text.trim()
+        ..store_email = _emailCtrl.text.trim()
+        ..mobile_no = _mobileCtrl.text.trim();
+      final result = await sendPaymentLink(plain, _encryptionKey, environment: Environment.uat, allowInsecureTls: true);
+      setState(() {
+        _raw = const JsonEncoder.withIndent('  ').convert({'endpoint': result.endpoint, 'raw': result.raw});
+        _decrypted = result.decryptedResponse ?? '';
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _sendDynamicLink() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+      _raw = '';
+      _decrypted = '';
+    });
+    try {
+      final plain = PaymentByLinkPlain()
+        ..req_user_id = 'yagou381'
+        ..me_id = _merchantId
+        ..amount = _amountCtrl.text.trim()
+        ..order_id = 'ORDER_${DateTime.now().millisecondsSinceEpoch}'
+        ..product = _productCtrl.text.trim()
+        ..customer_email = _emailCtrl.text.trim()
+        ..mobile_no = _mobileCtrl.text.trim()
+        ..success_url = ''
+        ..failure_url = ''
+        ..currency = 'ETB'
+        ..country = 'ETH';
+      final result =
+          await sendPaymentByLink(plain, _encryptionKey, environment: Environment.uat, allowInsecureTls: true);
+      setState(() {
+        _raw = const JsonEncoder.withIndent('  ').convert({'endpoint': result.endpoint, 'raw': result.raw});
+        _decrypted = result.decryptedResponse ?? '';
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -99,6 +170,33 @@ class _YagoutApiDemoPageState extends State<YagoutApiDemoPage> {
             onPressed: _loading ? null : _sendApi,
             child: Text(_loading ? 'Processing…' : 'Send API Request'),
           ),
+          const SizedBox(height: 24),
+          const Text('Payment Links', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _amountCtrl,
+            decoration: const InputDecoration(labelText: 'Amount', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _productCtrl,
+            decoration: const InputDecoration(labelText: 'Product/Description', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _emailCtrl,
+            decoration: const InputDecoration(labelText: 'Customer Email (optional)', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+                child: ElevatedButton(
+                    onPressed: _loading ? null : _sendDynamicLink, child: const Text('Generate Dynamic Link'))),
+            const SizedBox(width: 12),
+            Expanded(
+                child: ElevatedButton(
+                    onPressed: _loading ? null : _sendStaticLink, child: const Text('Generate Static Link'))),
+          ]),
           if (_error.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(_error, style: const TextStyle(color: Colors.red)),

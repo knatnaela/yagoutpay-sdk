@@ -12,7 +12,15 @@ export 'hash.dart' show buildHashInput, generateSha256Hex;
 export 'assemble.dart' show buildMerchantRequestPlain, buildApiMerchantRequestPlain;
 export 'crypto.dart' show aes256CbcEncrypt, aes256CbcDecrypt;
 export 'constants.dart' show Environment, ApiDefaults, Endpoints;
-export 'types.dart' show TransactionDetails, BuiltRequest, ApiIntegrationResponse, ApiRequestResult;
+export 'types.dart'
+    show
+        TransactionDetails,
+        BuiltRequest,
+        ApiIntegrationResponse,
+        ApiRequestResult,
+        PaymentLinkPlain,
+        PaymentByLinkPlain,
+        PaymentLinkResult;
 
 /// Build the full set of form fields and related debug fields for the WEB flow.
 BuiltRequest buildFormPayload(TransactionDetails details, String encryptionKey, {required String actionUrl}) {
@@ -186,3 +194,105 @@ class _ApiFacade {
 }
 
 YagoutPayClient createYagoutPay(YagoutPayClientConfig config) => YagoutPayClient(config);
+
+/// Build the Payment Link encoded body from the plain payload (AES-256-CBC).
+Map<String, String> buildPaymentLinkBody(PaymentLinkPlain plain, String encryptionKey) {
+  final json = jsonEncode(plain.toJson());
+  final enc = aes256CbcEncrypt(json, encryptionKey);
+  return {'request': enc};
+}
+
+/// Build the Payment By Link encoded body from the plain payload (AES-256-CBC).
+Map<String, String> buildPaymentByLinkBody(PaymentByLinkPlain plain, String encryptionKey) {
+  final json = jsonEncode(plain.toJson());
+  final enc = aes256CbcEncrypt(json, encryptionKey);
+  return {'request': enc};
+}
+
+/// Send a static Payment Link request.
+Future<PaymentLinkResult> sendPaymentLink(
+  PaymentLinkPlain plain,
+  String encryptionKey, {
+  Environment environment = Environment.uat,
+  String? endpointOverride,
+  bool allowInsecureTls = false,
+  http.Client? httpClient,
+}) async {
+  final endpoint = endpointOverride ?? Endpoints.paymentLinkUrls[environment]!;
+  final body = buildPaymentLinkBody(plain, encryptionKey);
+  final client = httpClient ?? http_util.createHttpClient(allowInsecureTls: allowInsecureTls);
+  final resp = await client.post(
+    Uri.parse(endpoint),
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'me_id': plain.me_code,
+    },
+    body: jsonEncode(body),
+  );
+  if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    throw Exception('Payment Link request failed (${resp.statusCode}): ${resp.body}');
+  }
+  final raw = _parseMaybeJson(resp.body);
+  final decrypted = _decryptKnownOrWhole(raw, encryptionKey);
+  return PaymentLinkResult(
+    raw: raw,
+    decryptedResponse: decrypted,
+    endpoint: endpoint,
+  );
+}
+
+/// Send a dynamic Payment By Link request.
+Future<PaymentLinkResult> sendPaymentByLink(
+  PaymentByLinkPlain plain,
+  String encryptionKey, {
+  Environment environment = Environment.uat,
+  String? endpointOverride,
+  bool allowInsecureTls = false,
+  http.Client? httpClient,
+}) async {
+  final endpoint = endpointOverride ?? Endpoints.paymentByLinkUrls[environment]!;
+  final body = buildPaymentByLinkBody(plain, encryptionKey);
+  final client = httpClient ?? http_util.createHttpClient(allowInsecureTls: allowInsecureTls);
+  final resp = await client.post(
+    Uri.parse(endpoint),
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'me_id': plain.me_id,
+    },
+    body: jsonEncode(body),
+  );
+  if (resp.statusCode < 200 || resp.statusCode >= 300) {
+    throw Exception('Payment By Link request failed (${resp.statusCode}): ${resp.body}');
+  }
+  final raw = _parseMaybeJson(resp.body);
+  final decrypted = _decryptKnownOrWhole(raw, encryptionKey);
+  return PaymentLinkResult(
+    raw: raw,
+    decryptedResponse: decrypted,
+    endpoint: endpoint,
+  );
+}
+
+dynamic _parseMaybeJson(String body) {
+  try {
+    return jsonDecode(body);
+  } catch (_) {
+    return body;
+  }
+}
+
+String? _decryptKnownOrWhole(dynamic raw, String encryptionKey) {
+  try {
+    String? enc;
+    if (raw is Map<String, dynamic>) {
+      enc = (raw['response'] ?? raw['data'] ?? raw['payload'] ?? raw['responseData'])?.toString();
+    }
+    enc ??= raw is String ? raw : null;
+    if (enc != null && enc.isNotEmpty) {
+      return aes256CbcDecrypt(enc, encryptionKey);
+    }
+  } catch (_) {}
+  return null;
+}
