@@ -28,8 +28,8 @@
                 </div>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6 mt-6">
-                <div class="md:col-span-2" id="gridMain">
+            <div id="gridMain" class="grid md:grid-cols-3 gap-6 mt-6">
+                <div class="md:col-span-2">
                     <div id="catalog" class="grid sm:grid-cols-2 gap-4"></div>
                 </div>
                 <div>
@@ -72,34 +72,43 @@
                                 class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
                         </div>
                     </div>
-                    <div id="linkCard" class="hidden md:block mt-6">
-                        <div class="border rounded-xl p-4 h-full">
-                            <div class="text-sm text-slate-600 mb-2">Payment Link</div>
-                            <div class="grid sm:grid-cols-2 gap-3 mb-3">
+                </div>
+            </div>
+
+            <div id="linkCard" class="hidden mt-6">
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <div class="border rounded-xl p-4">
+                            <div class="text-sm font-medium text-slate-700 mb-3">Payment Link</div>
+                            <div class="grid sm:grid-cols-2 gap-3">
                                 <input id="pl_amount" class="w-full border rounded-lg px-3 py-2"
                                     placeholder="Amount (e.g. 500)" />
                                 <input id="pl_order" class="w-full border rounded-lg px-3 py-2"
-                                    placeholder="Order ID (optional)" />
+                                    placeholder="Order ID (default auto)" />
                                 <input id="pl_product" class="w-full border rounded-lg px-3 py-2"
                                     placeholder="Product/Description" />
                                 <input id="pl_mobile" class="w-full border rounded-lg px-3 py-2"
                                     placeholder="Mobile (e.g. 0912345678)" />
+                                <input id="pl_expiry" class="w-full border rounded-lg px-3 py-2"
+                                    placeholder="Expiry (YYYY-MM-DD)" />
                                 <input id="pl_email" class="w-full border rounded-lg px-3 py-2"
                                     placeholder="Customer Email (optional)" />
                             </div>
-                            <div class="flex gap-3">
+                            <div class="mt-4 flex gap-3">
                                 <button id="pl_btn_dynamic"
                                     class="px-4 py-2 rounded-lg bg-indigo-600 text-white">Generate Dynamic Link</button>
                                 <button id="pl_btn_static" class="px-4 py-2 rounded-lg bg-slate-700 text-white">Generate
                                     Static Link</button>
                             </div>
-                            <div class="mt-4">
-                                <div class="text-sm text-slate-600 mb-2">Response</div>
-                                <pre id="pl_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
-                                <div class="text-xs text-slate-500 mt-2">Decrypted</div>
-                                <pre id="pl_decrypted"
-                                    class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
-                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="border rounded-xl p-4 h-full">
+                            <div class="text-sm text-slate-600 mb-2">Payment Link Response</div>
+                            <pre id="pl_raw" class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
+                            <div class="text-xs text-slate-500 mt-2">Decrypted</div>
+                            <pre id="pl_decrypted"
+                                class="bg-slate-50 border rounded p-2 overflow-x-auto text-sm"></pre>
                         </div>
                     </div>
                 </div>
@@ -284,8 +293,9 @@
             const order = (qs('#pl_order').value || '').trim();
             const product = (qs('#pl_product').value || '').trim();
             const mobile = (qs('#pl_mobile').value || '').trim();
+            const expiry = (qs('#pl_expiry').value || '').trim();
             const email = (qs('#pl_email').value || '').trim();
-            return { amount, order, product, mobile, email };
+            return { amount, order, product, mobile, expiry, email };
         }
 
         async function plCall(path, payload) {

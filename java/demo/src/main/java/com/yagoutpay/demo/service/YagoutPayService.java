@@ -125,7 +125,7 @@ public class YagoutPayService {
     }
 
     public Map<String, Object> sendPaymentLinkDynamic(String amount, String orderId, String product, String email,
-            String mobile, String successUrl, String failureUrl) throws Exception {
+            String mobile, String expiry, String successUrl, String failureUrl) throws Exception {
         Types.PaymentByLinkPlain plain = new Types.PaymentByLinkPlain();
         plain.req_user_id = "yagou381";
         plain.me_id = merchantId;
@@ -137,7 +137,7 @@ public class YagoutPayService {
         plain.first_name = "Demo";
         plain.last_name = "User";
         plain.dial_code = "+251";
-        plain.expiry_date = "2025-10-15";
+        plain.expiry_date = expiry.isEmpty() ? "2025-10-15" : expiry;
         plain.success_url = successUrl;
         plain.failure_url = failureUrl;
         plain.currency = "ETB";

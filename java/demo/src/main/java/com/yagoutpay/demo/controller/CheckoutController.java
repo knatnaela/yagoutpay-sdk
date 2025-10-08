@@ -53,6 +53,7 @@ public class CheckoutController {
             String product = String.valueOf(body.getOrDefault("product", "Custom Payment")).trim();
             String email = String.valueOf(body.getOrDefault("email", "")).trim();
             String mobile = String.valueOf(body.getOrDefault("mobile", "")).trim();
+            String expiry = String.valueOf(body.getOrDefault("expiry", "")).trim();
 
             if (amount.isEmpty()) {
                 return new ApiResponse<>(false, "amount is required");
@@ -74,6 +75,7 @@ public class CheckoutController {
                     product,
                     email,
                     mobile,
+                    expiry,
                     baseUrl + "/success",
                     baseUrl + "/failure");
             data.putAll(result);
