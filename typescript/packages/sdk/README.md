@@ -73,7 +73,7 @@ console.log(result.decryptedResponse); // optional plain response
 ### API at a glance
 - **buildFormPayload(details, encryptionKey, actionUrl?) → BuiltRequest**
 - **createYagoutPay(config).build(details) → BuiltRequest**
-- **createYagoutPay(config).api.send(details, options?) → Promise<ApiRequestResult>**
+- **createYagoutPay(config).api.send(details, options?) → `Promise<ApiRequestResult>`**
 - parseDecryptedResponse(text) → ParsedGatewayResponse
 - parseApiResult(result) → ParsedGatewayResponse | undefined
 - redactObject(obj), maskTail(value), previewBase64(value)
@@ -85,10 +85,10 @@ console.log(result.decryptedResponse); // optional plain response
 - renderAutoSubmitForm(payload) → string
 
 #### Payment Links
-- sendPaymentLink(plain: PaymentLinkPlain, encryptionKey, opts?) → Promise<PaymentLinkResult>
-- sendPaymentByLink(plain: PaymentByLinkPlain, encryptionKey, opts?) → Promise<PaymentLinkResult>
-- createPaymentLinkClient(config).sendStatic(overrides?) → Promise<PaymentLinkResult>
-- createPaymentLinkClient(config).sendDynamic(plain) → Promise<PaymentLinkResult>
+- sendPaymentLink(plain: PaymentLinkPlain, encryptionKey, opts?) → `Promise<PaymentLinkResult>`
+- sendPaymentByLink(plain: PaymentByLinkPlain, encryptionKey, opts?) → `Promise<PaymentLinkResult>`
+- createPaymentLinkClient(config).sendStatic(overrides?) → `Promise<PaymentLinkResult>`
+- createPaymentLinkClient(config).sendDynamic(plain) → `Promise<PaymentLinkResult>`
 - buildPaymentLinkBody(plain, encryptionKey) → { request }
 - buildPaymentByLinkBody(plain, encryptionKey) → { request }
 

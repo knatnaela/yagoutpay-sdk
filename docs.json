@@ -1,0 +1,102 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "YagoutPay SDK",
+  "colors": {
+    "primary": "#0D9373",
+    "light": "#07C983",
+    "dark": "#0A7A5F"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "docs/introduction",
+              "docs/quickstart",
+              "docs/authentication",
+              "docs/environments"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "docs/sdk/dart",
+              "docs/sdk/typescript",
+              "docs/sdk/java"
+            ]
+          },
+          {
+            "group": "Integration",
+            "pages": [
+              "integration/hosted-form",
+              "integration/direct-api",
+              "integration/payment-links"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/typescript-demo",
+              "examples/flutter-demo",
+              "examples/java-demo"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/yagoutpay/yagoutpay-sdk",
+          "icon": "github"
+        },
+        {
+          "anchor": "Discord",
+          "href": "https://discord.gg/yagoutpay",
+          "icon": "discord"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
+  },
+  "favicon": "/logo/favicon.png",
+  "api": {
+    "playground": {
+      "display": "simple"
+    },
+    "mdx": {
+      "server": "https://checkout.yagoutpay.com",
+      "auth": {
+        "method": "bearer"
+      }
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@yagoutpay.com"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://habesha.mintlify.app/docs/quickstart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "twitter": "https://twitter.com/yagoutpay",
+      "github": "https://github.com/yagoutpay",
+      "linkedin": "https://linkedin.com/company/yagoutpay"
+    }
+  }
+}
