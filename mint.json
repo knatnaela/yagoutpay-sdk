@@ -91,5 +91,8 @@
         "playground": {
             "mode": "simple"
         }
-    }
+    },
+    "redirects": [
+        { "source": "/", "destination": "/introduction" }
+    ]
 }
