@@ -93,6 +93,9 @@
         }
     },
     "redirects": [
-        { "source": "/", "destination": "/introduction" }
+        {
+            "source": "/",
+            "destination": "/introduction"
+        }
     ]
 }
