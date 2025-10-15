@@ -1,0 +1,126 @@
+---
+title: 'Payment Links'
+description: 'Generate static and dynamic payment links with the SDK'
+---
+
+## Overview
+
+Payment Links allow you to generate a URL or QR code that customers can use to complete a payment. The SDK encrypts a JSON payload and sends it to the gateway which returns link details.
+
+<CardGroup cols={2}>
+  <Card title="Static Links" icon="link">
+    Preconfigured links for fixed products or services
+  </Card>
+  <Card title="Dynamic Links" icon="shuffle">
+    Build links per transaction programmatically
+  </Card>
+</CardGroup>
+
+## Endpoints
+
+- UAT: `https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse`
+- Production: `https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse`
+
+Headers:
+- `me_id`: your merchant id
+
+Body (encrypted):
+```json
+{ "request": "<base64 AES-256-CBC of plain JSON>" }
+```
+
+## SDK Usage
+
+### TypeScript/Node.js
+
+```typescript
+import { createPaymentLinkClient, sendPaymentByLink } from '@yagoutpay/sdk';
+
+// Static link client (with defaults)
+const links = createPaymentLinkClient({
+  merchantId: process.env.YAGOUT_MERCHANT_ID!,
+  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+  environment: 'uat',
+  reqUserId: 'yagou381',
+  staticDefaults: {
+    amount: '500',
+    order_id: 'ORDER_STATIC_001',
+    product: 'Premium Subscription',
+    currency: 'ETB',
+    country: 'ETH',
+    success_url: 'http://localhost:3000/success',
+    failure_url: 'http://localhost:3000/failure',
+    mobile_no: '0965680964',
+    dial_code: '+251',
+    expiry_date: '2025-12-31',
+    media_type: ['API'],
+    first_name: 'YagoutPay',
+    last_name: 'StaticLink',
+  },
+});
+
+// Send static link
+const staticResult = await links.sendStatic();
+
+// Send dynamic link
+const dynamicResult = await sendPaymentByLink({
+  req_user_id: 'yagou381',
+  me_id: process.env.YAGOUT_MERCHANT_ID!,
+  amount: '1500',
+  order_id: 'ORDER_' + Date.now(),
+  product: 'Custom Invoice',
+  currency: 'ETB',
+  country: 'ETH',
+  success_url: 'http://localhost:3000/success',
+  failure_url: 'http://localhost:3000/failure',
+  mobile_no: '0965680964',
+  dial_code: '+251',
+  expiry_date: '2025-12-31',
+  media_type: ['API'],
+}, process.env.YAGOUT_MERCHANT_KEY!, { environment: 'uat' });
+
+console.log(staticResult.endpoint, staticResult.raw);
+console.log(dynamicResult.endpoint, dynamicResult.raw, dynamicResult.decryptedResponse);
+```
+
+<!-- Only TypeScript SDK supports Payment Links in this repo. Java snippet removed. -->
+
+## Low-level Helpers
+
+```typescript
+import { buildPaymentLinkBody, sendPaymentLink } from '@yagoutpay/sdk';
+
+const plain = { /* required fields as above */ };
+const body = buildPaymentLinkBody(plain, process.env.YAGOUT_MERCHANT_KEY!);
+const result = await sendPaymentLink(plain, process.env.YAGOUT_MERCHANT_KEY!);
+```
+
+## Response Handling
+
+The response may include:
+
+- `status`: Request status
+- `url` or `qr`: Payment link/QR code
+- `response`: Encrypted plain response (optional)
+
+If `response` is present, the SDK will attempt to decrypt and expose it as `decryptedResponse`.
+
+## Best Practices
+
+<Checklist>
+  <Checkbox>Use UAT for testing and validation</Checkbox>
+  <Checkbox>Do not log encryption keys</Checkbox>
+  <Checkbox>Validate required fields before sending</Checkbox>
+  <Checkbox>Handle and retry transient network errors</Checkbox>
+</Checklist>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hosted Form" icon="link" href="/integration/hosted-form">
+    Redirect-based integration
+  </Card>
+  <Card title="Direct API" icon="api" href="/integration/direct-api">
+    Server-to-server payments
+  </Card>
+</CardGroup>

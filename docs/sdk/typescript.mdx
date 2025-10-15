@@ -1,0 +1,290 @@
+---
+title: 'TypeScript SDK'
+description: 'Full-featured TypeScript/Node.js SDK for YagoutPay integration'
+---
+
+## Overview
+
+The YagoutPay TypeScript SDK provides comprehensive integration capabilities for web and server applications. It supports both Hosted Form and Direct API integration methods with full TypeScript support.
+
+<CardGroup cols={2}>
+  <Card title="TypeScript Support" icon="typescript">
+    Full TypeScript support with type definitions
+  </Card>
+  <Card title="Node.js Ready" icon="node">
+    Optimized for Node.js server applications
+  </Card>
+</CardGroup>
+
+## Installation
+
+Add the YagoutPay SDK to your `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@yagoutpay/sdk": "file:../sdk"
+  }
+}
+```
+
+## Quick Start
+
+### Hosted Form Integration
+
+```typescript
+import { buildFormPayload, renderAutoSubmitForm } from '@yagoutpay/sdk';
+
+const built = buildFormPayload({
+  aggregatorId: 'yagout',
+  merchantId: '202504290002',
+  orderNumber: '49340',
+  amount: '1',
+  country: 'ETH',
+  currency: 'ETB',
+  transactionType: 'SALE',
+  successUrl: 'http://localhost/YagoutPay/transaction//Response.php',
+  failureUrl: 'http://localhost/YagoutPay/transaction//Response.php',
+  channel: 'WEB',
+  isLoggedIn: 'Y',
+}, 'ENCRYPTION_KEY');
+
+// Built payload properties
+console.log(built.me_id);
+console.log(built.merchant_request_plain);
+console.log(built.merchant_request);
+console.log(built.hash_input, built.hash_hex, built.hash);
+console.log(built.actionUrl);
+
+// Optional: auto-submit form markup
+const html = renderAutoSubmitForm(built);
+```
+
+### Direct API Integration
+
+```typescript
+import { createYagoutPay } from '@yagoutpay/sdk';
+
+const yagout = createYagoutPay({
+  merchantId: '202504290002',
+  encryptionKey: 'ENCRYPTION_KEY',
+  environment: 'uat',
+});
+
+const result = await yagout.api.send({
+  aggregatorId: 'yagout',
+  orderNumber: '49340',
+  amount: '1',
+  country: 'ETH',
+  currency: 'ETB',
+  transactionType: 'SALE',
+  customerMobile: '0912345678',
+  // pg_details are defaulted for convenience but can be overridden
+});
+
+console.log(result.endpoint, result.raw.status);
+console.log(result.decryptedResponse); // optional plain response
+```
+
+## API Reference
+
+### Core Functions
+
+<AccordionGroup>
+  <Accordion title="buildFormPayload">
+    Builds a complete payment request for Hosted Form integration.
+    
+    **Parameters:**
+    - `details`: TransactionDetails object
+    - `encryptionKey`: Base64-encoded encryption key
+    - `actionUrl`: Optional custom action URL
+    
+    **Returns:** BuiltRequest object
+  </Accordion>
+  
+  <Accordion title="createYagoutPay">
+    Creates a YagoutPay client instance for API integration.
+    
+    **Parameters:**
+    - `config`: Client configuration object
+    
+    **Returns:** YagoutPay client with API methods
+  </Accordion>
+  
+  <Accordion title="renderAutoSubmitForm">
+    Generates HTML form markup for auto-submission.
+    
+    **Parameters:**
+    - `payload`: BuiltRequest object
+    
+    **Returns:** HTML string
+  </Accordion>
+</AccordionGroup>
+
+### Payment Links
+
+The TypeScript SDK includes comprehensive Payment Links support:
+
+<AccordionGroup>
+  <Accordion title="Static Payment Links">
+    Create predefined payment links for fixed products/services.
+    
+    ```typescript
+    import { createPaymentLinkClient } from '@yagoutpay/sdk';
+    
+    const links = createPaymentLinkClient({
+      merchantId: '202508080001',
+      encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+      environment: 'uat',
+      reqUserId: 'yagou381',
+      staticDefaults: {
+        amount: '500',
+        order_id: 'ORDER_STATIC_001',
+        product: 'Premium Subscription',
+        currency: 'ETB',
+        country: 'ETH',
+        success_url: 'http://localhost:3000/success',
+        failure_url: 'http://localhost:3000/failure',
+        mobile_no: '0965680964',
+        dial_code: '+251',
+        expiry_date: '2025-12-31',
+        media_type: ['API'],
+        first_name: 'YagoutPay',
+        last_name: 'StaticLink',
+      },
+    });
+    
+    const result = await links.sendStatic();
+    ```
+  </Accordion>
+  
+  <Accordion title="Dynamic Payment Links">
+    Build payment links per transaction with flexible parameters.
+    
+    ```typescript
+    import { sendPaymentByLink } from '@yagoutpay/sdk';
+    
+    const result = await sendPaymentByLink({
+      req_user_id: 'yagou381',
+      me_id: '202508080001',
+      amount: '1500',
+      order_id: 'ORDER_' + Date.now(),
+      product: 'Custom Invoice',
+      currency: 'ETB',
+      country: 'ETH',
+      success_url: 'http://localhost:3000/success',
+      failure_url: 'http://localhost:3000/failure',
+      mobile_no: '0965680964',
+      dial_code: '+251',
+      expiry_date: '2025-12-31',
+      media_type: ['API'],
+    }, process.env.YAGOUT_MERCHANT_KEY!, { environment: 'uat' });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Type Definitions
+
+### TransactionDetails Interface
+
+```typescript
+interface TransactionDetails {
+  aggregatorId: string;
+  merchantId: string;
+  orderNumber: string;
+  amount: string;
+  country: string;
+  currency: string;
+  transactionType: 'SALE' | 'AUTHORIZE';
+  successUrl: string;
+  failureUrl: string;
+  channel: 'WEB' | 'API';
+  isLoggedIn?: string;
+  customerMobile?: string;
+  // Additional optional fields...
+}
+```
+
+### BuiltRequest Interface
+
+```typescript
+interface BuiltRequest {
+  me_id: string;
+  merchant_request_plain: string;
+  merchant_request: string;
+  hash_input: string;
+  hash_hex: string;
+  hash: string;
+  actionUrl: string;
+}
+```
+
+### Client Configuration
+
+```typescript
+interface YagoutPayConfig {
+  merchantId: string;
+  encryptionKey: string;
+  environment: 'uat' | 'production';
+}
+```
+
+## Advanced Features
+
+### Utility Functions
+
+<AccordionGroup>
+  <Accordion title="Response Parsing">
+    Parse and decrypt API responses:
+    
+    ```typescript
+    import { parseDecryptedResponse, parseApiResult } from '@yagoutpay/sdk';
+    
+    const parsed = parseDecryptedResponse(responseText);
+    const apiResult = parseApiResult(result);
+    ```
+  </Accordion>
+  
+  <Accordion title="Data Redaction">
+    Redact sensitive data for logging:
+    
+    ```typescript
+    import { redactObject, maskTail, previewBase64 } from '@yagoutpay/sdk';
+    
+    const redacted = redactObject(sensitiveData);
+    const masked = maskTail('0912345678', 4); // Shows last 4 digits
+    const preview = previewBase64(encryptedData);
+    ```
+  </Accordion>
+  
+  <Accordion title="Form Helpers">
+    Convert data to form formats:
+    
+    ```typescript
+    import { toFormUrlEncoded, toFormData } from '@yagoutpay/sdk';
+    
+    const urlEncoded = toFormUrlEncoded(payload);
+    const formData = toFormData(payload);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Low-Level Crypto Functions
+
+For advanced use cases, you can access low-level cryptographic functions:
+
+```typescript
+import {
+  buildMerchantRequestPlain,
+  buildHashInput,
+  generateSha256Hex,
+  encryptHashHex,
+} from '@yagoutpay/sdk';
+
+const plain = buildMerchantRequestPlain(details);
+const hashInput = buildHashInput(details);
+const hashHex = generateSha256Hex(hashInput);
+const encryptedHash = encryptHashHex(hashHex, encryptionKey);
+```
+
+<!-- Trimmed to SDK-only usage. No framework-specific examples or guides. -->

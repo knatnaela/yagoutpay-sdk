@@ -1,0 +1,62 @@
+---
+title: 'Java Demo'
+description: 'Java example using YagoutPay Java SDK for Hosted Form and API'
+---
+
+## Overview
+
+This example mirrors `java/demo` at a high level, focusing on SDK calls for hosted form and direct API.
+
+## Hosted Form
+
+```java
+import com.yagoutpay.sdk.*;
+
+Client.Config cfg = new Client.Config();
+cfg.merchantId = System.getenv("YAGOUT_MERCHANT_ID");
+cfg.encryptionKey = System.getenv("YAGOUT_MERCHANT_KEY");
+cfg.environment = Constants.Environment.UAT;
+Client client = new Client(cfg);
+
+Types.TransactionDetails details = Types.TransactionDetails.builder()
+    .aggregatorId("yagout")
+    .merchantId(cfg.merchantId)
+    .orderNumber("ORDER" + System.currentTimeMillis())
+    .amount("1.00")
+    .country("ETH")
+    .currency("ETB")
+    .transactionType("SALE")
+    .successUrl("http://localhost:3001/success")
+    .failureUrl("http://localhost:3001/failure")
+    .channel("WEB")
+    .build();
+
+Types.BuiltRequest built = client.build(details);
+// Use built.meId, built.merchantRequest, built.hash, built.actionUrl to submit form
+```
+
+## Direct API
+
+```java
+Types.TransactionDetails details = Types.TransactionDetails.builder()
+    .aggregatorId("yagout")
+    .merchantId(cfg.merchantId)
+    .orderNumber("ORDER" + System.currentTimeMillis())
+    .amount("1.00")
+    .country("ETH")
+    .currency("ETB")
+    .transactionType("SALE")
+    .channel("API")
+    .customerMobile("0912345678")
+    .build();
+
+Types.ApiRequestResult result = client.sendApi(details, null, true);
+System.out.println(result.endpoint);
+System.out.println(result.raw.status);
+System.out.println(result.decryptedResponse);
+```
+
+## Notes
+
+- Set `YAGOUT_MERCHANT_ID` and `YAGOUT_MERCHANT_KEY` in your environment.
+- Use UAT and test data.

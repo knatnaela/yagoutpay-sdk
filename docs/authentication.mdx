@@ -1,0 +1,90 @@
+---
+title: 'Authentication'
+description: 'Learn how to authenticate with YagoutPay SDK'
+---
+
+## Overview
+
+YagoutPay SDK uses merchant credentials for authentication. You'll need to securely store and use your merchant ID and encryption key.
+
+## Required Credentials
+
+<CardGroup cols={2}>
+  <Card title="Merchant ID" icon="id-card">
+    Your unique merchant identifier provided by YagoutPay
+  </Card>
+  <Card title="Encryption Key" icon="key">
+    Base64-encoded 32-byte encryption key for secure communication
+  </Card>
+</CardGroup>
+
+## Security Best Practices
+
+<Warning>
+**Critical Security Guidelines:**
+- Never commit encryption keys to version control
+- Store keys securely using environment variables or secret management
+- Use different keys for UAT and production environments
+- Rotate keys regularly according to your security policy
+</Warning>
+
+### Environment Variables
+
+Store your credentials as environment variables:
+
+<CodeGroup>
+```bash Environment Variables
+export YAGOUT_MERCHANT_ID="your_merchant_id"
+export YAGOUT_MERCHANT_KEY="your_base64_encryption_key"
+```
+
+```dart Dart/Flutter
+final merchantId = Platform.environment['YAGOUT_MERCHANT_ID']!;
+final encryptionKey = Platform.environment['YAGOUT_MERCHANT_KEY']!;
+```
+
+```typescript TypeScript/Node.js
+const merchantId = process.env.YAGOUT_MERCHANT_ID!;
+const encryptionKey = process.env.YAGOUT_MERCHANT_KEY!;
+```
+
+```java Java
+String merchantId = System.getenv("YAGOUT_MERCHANT_ID");
+String encryptionKey = System.getenv("YAGOUT_MERCHANT_KEY");
+```
+</CodeGroup>
+
+<!-- Trimmed: focus on env vars and SDK configuration only. -->
+
+## Environment-Specific Configuration
+
+<Steps>
+  <Step title="UAT Environment">
+    Use UAT credentials for testing and development:
+    ```bash
+    export YAGOUT_MERCHANT_ID="uat_merchant_id"
+    export YAGOUT_MERCHANT_KEY="uat_encryption_key"
+    ```
+  </Step>
+  <Step title="Production Environment">
+    Use production credentials for live transactions:
+    ```bash
+    export YAGOUT_MERCHANT_ID="prod_merchant_id"
+    export YAGOUT_MERCHANT_KEY="prod_encryption_key"
+    ```
+  </Step>
+  <Step title="SDK Configuration">
+    Configure your SDK to use the appropriate environment:
+    ```typescript
+    const yagout = createYagoutPay({
+      merchantId: process.env.YAGOUT_MERCHANT_ID!,
+      encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+      environment: 'uat', // or 'production'
+    });
+    ```
+  </Step>
+</Steps>
+
+<!-- Error handling patterns omitted to keep minimal. -->
+
+<!-- Next steps removed. -->

@@ -1,0 +1,154 @@
+---
+title: 'Dart SDK'
+description: 'Native Dart/Flutter SDK for YagoutPay integration'
+---
+
+## Overview
+
+The YagoutPay Dart SDK provides native Flutter/Dart integration with comprehensive support for mobile applications. It includes InAppWebView integration for seamless payment processing.
+
+<CardGroup cols={2}>
+  <Card title="Flutter Support" icon="flutter">
+    Native Flutter integration with InAppWebView
+  </Card>
+  <Card title="Mobile Optimized" icon="mobile">
+    Optimized for mobile payment flows
+  </Card>
+</CardGroup>
+
+## Installation
+
+Add the YagoutPay SDK to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  yagoutpay_sdk:
+    path: ../sdk  # adjust path to your SDK location
+```
+
+## Quick Start
+
+### Basic Integration
+
+```dart
+import 'package:yagoutpay_sdk/yagoutpay_sdk.dart';
+
+final built = buildFormPayload(
+  TransactionDetails(
+    aggregatorId: 'yagout',
+    merchantId: '<MERCHANT_ID>',
+    orderNumber: '<ORDER_NO>',
+    amount: '1',
+    country: 'ETH',
+    currency: 'ETB',
+    transactionType: 'SALE',
+    successUrl: '<SUCCESS_URL>',
+    failureUrl: '<FAILURE_URL>',
+    channel: 'WEB',
+    isLoggedIn: 'Y',
+  ),
+  '<ENCRYPTION_KEY_BASE64>',
+  actionUrl: '<ACTION_URL>'
+);
+
+print(built.merchantRequestPlain);
+print(built.merchantRequest);
+print(built.hashInput);
+print(built.hashHex);
+print(built.hash);
+```
+
+<!-- Trimmed to SDK-only usage. In-app UI setup omitted. -->
+
+## API Reference
+
+### Core Functions
+
+<AccordionGroup>
+  <Accordion title="buildFormPayload">
+    Builds a complete payment request with encryption and hashing.
+    
+    **Parameters:**
+    - `details`: TransactionDetails object
+    - `encryptionKey`: Base64-encoded encryption key
+    - `actionUrl`: Optional custom action URL
+    
+    **Returns:** BuiltRequest object with all required fields
+  </Accordion>
+  
+  <Accordion title="renderAutoSubmitForm">
+    Generates HTML form markup for auto-submission.
+    
+    **Parameters:**
+    - `payload`: BuiltRequest object
+    
+    **Returns:** HTML string for form submission
+  </Accordion>
+  
+  <Accordion title="TransactionDetails">
+    Data class for transaction parameters.
+    
+    **Required Fields:**
+    - `aggregatorId`: Always 'yagout'
+    - `merchantId`: Your merchant ID
+    - `orderNumber`: Unique order identifier
+    - `amount`: Transaction amount
+    - `country`: Country code (e.g., 'ETH')
+    - `currency`: Currency code (e.g., 'ETB')
+    - `transactionType`: 'SALE' or 'AUTHORIZE'
+    - `successUrl`: Success callback URL
+    - `failureUrl`: Failure callback URL
+    - `channel`: 'WEB' or 'API'
+  </Accordion>
+</AccordionGroup>
+
+### BuiltRequest Object
+
+The `buildFormPayload` function returns a `BuiltRequest` object with the following properties:
+
+<CodeGroup>
+```dart Properties
+class BuiltRequest {
+  final String meId;                    // Merchant ID
+  final String merchantRequestPlain;    // Unencrypted request
+  final String merchantRequest;         // Encrypted request
+  final String hashInput;               // Hash input string
+  final String hashHex;                 // SHA-256 hex digest
+  final String hash;                    // Encrypted hash
+  final String actionUrl;               // Gateway action URL
+}
+```
+</CodeGroup>
+
+<!-- UI integration details removed to keep docs SDK-focused. -->
+
+## Security Considerations
+
+<Warning>
+**Important Security Notes:**
+- Keep encryption keys secure and server-side when possible
+- Use non-production data in demos
+- Mask PII in UIs
+- Never log sensitive payment data
+</Warning>
+
+### Best Practices
+
+<Steps>
+  <Step title="Key Management">
+    Store encryption keys securely using Flutter's secure storage
+  </Step>
+  <Step title="Data Validation">
+    Validate all input data before processing
+  </Step>
+  <Step title="Error Handling">
+    Implement proper error handling without exposing sensitive data
+  </Step>
+  <Step title="Testing">
+    Use UAT environment for testing with test data
+  </Step>
+</Steps>
+
+<!-- Example app instructions removed. Refer to repository examples if needed. -->
+
+<!-- Next steps removed. -->

@@ -1,0 +1,115 @@
+---
+title: 'Environments'
+description: 'Configure UAT and production environments for YagoutPay SDK'
+---
+
+## Environment Overview
+
+YagoutPay provides two environments for different stages of development and deployment:
+
+<CardGroup cols={2}>
+  <Card title="UAT Environment" icon="test-tube">
+    **Purpose**: Testing and development
+    - Non-production data
+    - Safe for experimentation
+    - No real money transactions
+  </Card>
+  <Card title="Production Environment" icon="rocket">
+    **Purpose**: Live payment processing
+    - Real transactions
+    - Production-grade security
+    - Live customer data
+  </Card>
+</CardGroup>
+
+## Environment Configuration
+
+### UAT Environment
+
+Use the UAT environment for testing and development:
+
+<AccordionGroup>
+  <Accordion title="Base URLs">
+    - **Checkout**: `https://uatcheckout.yagoutpay.com`
+    - **API**: `https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0`
+    - **Payment Links**: `https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse`
+  </Accordion>
+  <Accordion title="Credentials">
+    - Use UAT-specific merchant ID and encryption key
+    - Test with non-production data only
+    - Safe to use in development environments
+  </Accordion>
+</AccordionGroup>
+
+### Production Environment
+
+Use the production environment for live transactions:
+
+<AccordionGroup>
+  <Accordion title="Base URLs">
+    - **Checkout**: `https://checkout.yagoutpay.com`
+    - **API**: `https://checkout.yagoutpay.com/ms-transaction-core-1-0`
+    - **Payment Links**: `https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/staticQRPaymentResponse`
+  </Accordion>
+  <Accordion title="Credentials">
+    - Use production merchant ID and encryption key
+    - Handle real customer data securely
+    - Follow all security best practices
+  </Accordion>
+</AccordionGroup>
+
+## SDK Configuration
+
+Configure your SDK to use the appropriate environment:
+
+<CodeGroup>
+```dart Dart/Flutter
+final client = YagoutPayClient(
+  merchantId: 'your_merchant_id',
+  encryptionKey: 'your_encryption_key',
+  environment: YagoutPayEnvironment.uat, // or .production
+);
+```
+
+```typescript TypeScript/Node.js
+const yagout = createYagoutPay({
+  merchantId: 'your_merchant_id',
+  encryptionKey: 'your_encryption_key',
+  environment: 'uat', // or 'production'
+});
+```
+
+```java Java
+Client.Config cfg = new Client.Config();
+cfg.merchantId = "your_merchant_id";
+cfg.encryptionKey = "your_encryption_key";
+cfg.environment = Constants.Environment.UAT; // or PRODUCTION
+Client client = new Client(cfg);
+```
+</CodeGroup>
+
+<!-- Trimmed: features lists removed. -->
+
+<!-- Trimmed: workflow guidance removed. -->
+
+### Environment Variables
+
+Set up environment-specific configuration:
+
+<CodeGroup>
+```bash UAT Environment
+export YAGOUT_ENVIRONMENT="uat"
+export YAGOUT_MERCHANT_ID="uat_merchant_id"
+export YAGOUT_MERCHANT_KEY="uat_encryption_key"
+```
+
+```bash Production Environment
+export YAGOUT_ENVIRONMENT="production"
+export YAGOUT_MERCHANT_ID="prod_merchant_id"
+export YAGOUT_MERCHANT_KEY="prod_encryption_key"
+```
+</CodeGroup>
+
+<!-- Trimmed: test data and checklists removed. -->
+
+<!-- Trimmed: monitoring and next steps removed. -->

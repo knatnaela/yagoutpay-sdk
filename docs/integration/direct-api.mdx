@@ -1,0 +1,151 @@
+---
+title: 'Direct API Integration'
+description: 'Server-to-server payment integration with YagoutPay'
+---
+
+## Overview
+
+Direct API integration sends encrypted requests from your server to YagoutPay and optionally decrypts responses. This method is ideal for backend-driven flows and when you need full control over the user experience.
+
+<CardGroup cols={2}>
+  <Card title="Backend First" icon="server">
+    Keep secrets server-side; no sensitive data on the client
+  </Card>
+  <Card title="Full Control" icon="cog">
+    Customize UX and handle responses programmatically
+  </Card>
+</CardGroup>
+
+## Flow
+
+<Steps>
+  <Step title="Assemble plain JSON">
+    Build the transaction details as JSON on your server
+  </Step>
+  <Step title="Encrypt request">
+    AES-256-CBC encrypt the JSON with your merchant key
+  </Step>
+  <Step title="Send to API">
+    POST the encrypted request to the YagoutPay API endpoint with `me_id` header
+  </Step>
+  <Step title="Decrypt response (optional)">
+    If an encrypted `response` is returned, decrypt it to plain JSON
+  </Step>
+</Steps>
+
+## Implementation
+
+<CodeGroup>
+```typescript TypeScript/Node.js
+import { createYagoutPay } from '@yagoutpay/sdk';
+
+const yagout = createYagoutPay({
+  merchantId: process.env.YAGOUT_MERCHANT_ID!,
+  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+  environment: 'uat',
+});
+
+const result = await yagout.api.send({
+  aggregatorId: 'yagout',
+  orderNumber: 'ORDER_' + Date.now(),
+  amount: '1',
+  country: 'ETH',
+  currency: 'ETB',
+  transactionType: 'SALE',
+  customerMobile: '0912345678',
+});
+
+console.log(result.endpoint, result.raw.status);
+console.log(result.decryptedResponse);
+```
+
+```java Java
+Client.Config cfg = new Client.Config();
+cfg.merchantId = System.getenv("YAGOUT_MERCHANT_ID");
+cfg.encryptionKey = System.getenv("YAGOUT_MERCHANT_KEY");
+cfg.environment = Constants.Environment.UAT;
+Client client = new Client(cfg);
+
+Types.TransactionDetails details = Types.TransactionDetails.builder()
+    .aggregatorId("yagout")
+    .merchantId(cfg.merchantId)
+    .orderNumber("ORDER" + System.currentTimeMillis())
+    .amount("1.00")
+    .country("ETH")
+    .currency("ETB")
+    .transactionType("SALE")
+    .channel("API")
+    .customerMobile("0912345678")
+    .build();
+
+Types.ApiRequestResult result = client.sendApi(details, null, true);
+System.out.println(result.endpoint);
+System.out.println(result.raw.status);
+System.out.println(result.decryptedResponse);
+```
+
+<!-- Dart server example removed to keep to supported SDK surfaces. -->
+</CodeGroup>
+
+## Endpoint
+
+- UAT: `https://uatcheckout.yagoutpay.com/ms-transaction-core-1-0/sdk/apiResponse`
+- Production: `https://checkout.yagoutpay.com/ms-transaction-core-1-0/sdk/apiResponse`
+
+Headers:
+- `me_id`: Your merchant id
+- `Content-Type`: `application/json`
+
+Body:
+```json
+{ "request": "<base64 AES-256-CBC of plain JSON>" }
+```
+
+## Decryption
+
+If the API returns an encrypted `response` field, decrypt it with the same AES function and key.
+
+<CodeGroup>
+```typescript TypeScript
+import { parseApiResult } from '@yagoutpay/sdk';
+const parsed = parseApiResult(result);
+```
+
+```java Java
+// If response is present, client can decrypt based on flag used (true)
+```
+</CodeGroup>
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Invalid encryption key">
+    Ensure Base64 key decodes to exactly 32 bytes
+  </Accordion>
+  <Accordion title="HTTP errors">
+    Implement retries and timeouts; log correlation IDs
+  </Accordion>
+  <Accordion title="Decryption failures">
+    Verify environment and key; check response format
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Checklist>
+  <Checkbox>Keep keys server-side only</Checkbox>
+  <Checkbox>Validate input before encryption</Checkbox>
+  <Checkbox>Log redacted payloads only</Checkbox>
+  <Checkbox>Use UAT for testing</Checkbox>
+</Checklist>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hosted Form" icon="link" href="/integration/hosted-form">
+    Compare with redirect-based integration
+  </Card>
+  <Card title="Payment Links" icon="link" href="/integration/payment-links">
+    Generate static and dynamic links
+  </Card>
+</CardGroup>

@@ -1,0 +1,114 @@
+---
+title: 'TypeScript Demo'
+description: 'Node.js demo using @yagoutpay/sdk for Hosted Form, API, and Payment Links'
+---
+
+## Overview
+
+This example mirrors `typescript/packages/demo`, showing how to use the TypeScript SDK for:
+- Hosted Form (build and post form fields)
+- Direct API (send encrypted request, decrypt response)
+- Payment Links (static & dynamic)
+
+## Setup
+
+```bash
+cd typescript/packages/demo
+npm install
+# .env in this folder
+cat > .env <<EOF
+YAGOUT_MERCHANT_ID=your_merchant_id
+YAGOUT_MERCHANT_KEY=your_base64_key
+EOF
+npm run dev
+# Open http://localhost:3000
+```
+
+## Hosted Form (Server builds payload)
+
+```ts
+import { buildFormPayload, renderAutoSubmitForm } from '@yagoutpay/sdk';
+
+const built = buildFormPayload({
+  aggregatorId: 'yagout',
+  merchantId: process.env.YAGOUT_MERCHANT_ID!,
+  orderNumber: 'ORDER' + Date.now(),
+  amount: '85.00',
+  country: 'ETH',
+  currency: 'ETB',
+  transactionType: 'SALE',
+  successUrl: 'http://localhost:3000/success',
+  failureUrl: 'http://localhost:3000/failure',
+  channel: 'WEB',
+  isLoggedIn: 'Y',
+}, process.env.YAGOUT_MERCHANT_KEY!);
+
+// built = { me_id, merchant_request_plain, merchant_request, hash_input, hash_hex, hash, actionUrl }
+const html = renderAutoSubmitForm(built);
+```
+
+## Direct API (Server-to-server)
+
+```ts
+import { createYagoutPay } from '@yagoutpay/sdk';
+
+const yagout = createYagoutPay({
+  merchantId: process.env.YAGOUT_MERCHANT_ID!,
+  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+  environment: 'uat',
+});
+
+const result = await yagout.api.send({
+  aggregatorId: 'yagout',
+  orderNumber: 'ORDER' + Date.now(),
+  amount: '1.00',
+  country: 'ETH',
+  currency: 'ETB',
+  transactionType: 'SALE',
+  customerMobile: '0912345678',
+});
+
+console.log(result.endpoint, result.raw.status);
+console.log(result.decryptedResponse);
+```
+
+## Payment Links (SDK helpers)
+
+```ts
+import { createPaymentLinkClient, sendPaymentByLink } from '@yagoutpay/sdk';
+
+const links = createPaymentLinkClient({
+  merchantId: process.env.YAGOUT_MERCHANT_ID!,
+  encryptionKey: process.env.YAGOUT_MERCHANT_KEY!,
+  environment: 'uat',
+  reqUserId: 'yagou381',
+});
+
+// Static
+const staticResult = await links.sendStatic({
+  qr_transaction_amount: '500',
+  brandName: 'Demo Product',
+  mobile_no: '0965680964',
+});
+
+// Dynamic
+const dynamicResult = await sendPaymentByLink({
+  req_user_id: 'yagou381',
+  me_id: process.env.YAGOUT_MERCHANT_ID!,
+  amount: '1500',
+  order_id: 'ORDER_' + Date.now(),
+  product: 'Custom Invoice',
+  currency: 'ETB',
+  country: 'ETH',
+  success_url: 'http://localhost:3000/success',
+  failure_url: 'http://localhost:3000/failure',
+  mobile_no: '0965680964',
+  dial_code: '+251',
+}, process.env.YAGOUT_MERCHANT_KEY!, { environment: 'uat' });
+```
+
+## Notes
+
+- Keep merchant key on the server.
+- Use UAT environment and test data.
+- For full demo UI and endpoints, see `typescript/packages/demo/src/server.ts`.

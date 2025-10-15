@@ -1,0 +1,172 @@
+---
+title: 'Quickstart'
+description: 'Get started with YagoutPay SDK in under 5 minutes'
+---
+
+## Choose Your Platform
+
+Select your development platform to see platform-specific quickstart instructions:
+
+<Tabs>
+  <Tab title="Dart/Flutter">
+    <Steps>
+      <Step title="Add Dependency">
+        Add the YagoutPay SDK to your `pubspec.yaml`:
+        ```yaml
+        dependencies:
+          yagoutpay_sdk:
+            path: ../sdk  # adjust path to your SDK location
+        ```
+      </Step>
+      <Step title="Import and Configure">
+        ```dart
+        import 'package:yagoutpay_sdk/yagoutpay_sdk.dart';
+        
+        final built = buildFormPayload(
+          TransactionDetails(
+            aggregatorId: 'yagout',
+            merchantId: '<MERCHANT_ID>',
+            orderNumber: '<ORDER_NO>',
+            amount: '1',
+            country: 'ETH',
+            currency: 'ETB',
+            transactionType: 'SALE',
+            successUrl: '<SUCCESS_URL>',
+            failureUrl: '<FAILURE_URL>',
+            channel: 'WEB',
+            isLoggedIn: 'Y',
+          ),
+          '<ENCRYPTION_KEY_BASE64>',
+          actionUrl: '<ACTION_URL>'
+        );
+        ```
+      </Step>
+      <Step title="Handle Payment">
+        Use the built payload to submit to YagoutPay:
+        ```dart
+        print(built.merchantRequestPlain);
+        print(built.merchantRequest);
+        print(built.hashInput);
+        print(built.hashHex);
+        print(built.hash);
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="TypeScript/Node.js">
+    <Steps>
+      <Step title="Add Dependency">
+        Add the YagoutPay SDK to your `package.json`:
+        ```json
+        {
+          "dependencies": {
+            "@yagoutpay/sdk": "file:../sdk"
+          }
+        }
+        ```
+      </Step>
+      <Step title="Import and Configure">
+        ```typescript
+        import { buildFormPayload, renderAutoSubmitForm } from '@yagoutpay/sdk';
+        
+        const built = buildFormPayload({
+          aggregatorId: 'yagout',
+          merchantId: '202504290002',
+          orderNumber: '49340',
+          amount: '1',
+          country: 'ETH',
+          currency: 'ETB',
+          transactionType: 'SALE',
+          successUrl: 'http://localhost/YagoutPay/transaction//Response.php',
+          failureUrl: 'http://localhost/YagoutPay/transaction//Response.php',
+          channel: 'WEB',
+          isLoggedIn: 'Y',
+        }, 'ENCRYPTION_KEY');
+        ```
+      </Step>
+      <Step title="Handle Payment">
+        Use the built payload or auto-submit form:
+        ```typescript
+        // Built payload properties
+        console.log(built.me_id);
+        console.log(built.merchant_request_plain);
+        console.log(built.merchant_request);
+        console.log(built.hash_input, built.hash_hex, built.hash);
+        console.log(built.actionUrl);
+        
+        // Optional: auto-submit form markup
+        const html = renderAutoSubmitForm(built);
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="Java">
+    <Steps>
+      <Step title="Add Dependency">
+        Add the YagoutPay SDK to your build configuration (Gradle/Maven)
+      </Step>
+      <Step title="Import and Configure">
+        ```java
+        import com.yagoutpay.sdk.*;
+        
+        Client.Config cfg = new Client.Config();
+        cfg.merchantId = "2025...";
+        cfg.encryptionKey = "BASE64_32_BYTE_KEY";
+        cfg.environment = Constants.Environment.UAT;
+        Client client = new Client(cfg);
+        ```
+      </Step>
+      <Step title="Build Payment Request">
+        ```java
+        Types.TransactionDetails details = Types.TransactionDetails.builder()
+            .aggregatorId("yagout")
+            .merchantId(cfg.merchantId)
+            .orderNumber("ORDER" + System.currentTimeMillis())
+            .amount("1.00")
+            .country("ETH")
+            .currency("ETB")
+            .transactionType("SALE")
+            .successUrl("http://localhost:3001/success")
+            .failureUrl("http://localhost:3001/failure")
+            .channel("WEB")
+            .build();
+        
+        Types.BuiltRequest built = client.build(details);
+        // built.meId, built.merchantRequest, built.hash, built.actionUrl
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Environment Setup
+
+<Warning>
+**Important**: Keep your merchant encryption keys secure and server-side. Never commit or log them.
+</Warning>
+
+### Required Credentials
+
+You'll need the following credentials from YagoutPay:
+
+- **Merchant ID**: Your unique merchant identifier
+- **Encryption Key**: Base64-encoded 32-byte encryption key
+
+### Environment Configuration
+
+<AccordionGroup>
+  <Accordion title="UAT Environment">
+    Use the UAT environment for testing and development:
+    - **Base URL**: `https://uatcheckout.yagoutpay.com`
+    - **Purpose**: Testing with non-production data
+  </Accordion>
+  <Accordion title="Production Environment">
+    Use the production environment for live transactions:
+    - **Base URL**: `https://checkout.yagoutpay.com`
+    - **Purpose**: Live payment processing
+  </Accordion>
+</AccordionGroup>
+
+<!-- Trimmed: quickstart focuses on install + minimal usage only. -->

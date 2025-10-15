@@ -1,0 +1,49 @@
+---
+title: 'Flutter Demo'
+description: 'Flutter example using yagoutpay_sdk for Hosted Form'
+---
+
+## Overview
+
+This example mirrors `dart/sdk/example`, showing how to build the payload with the Dart SDK and load the auto-submit form (UI specifics omitted).
+
+## Build Payload
+
+```dart
+import 'package:yagoutpay_sdk/yagoutpay_sdk.dart';
+
+final built = buildFormPayload(
+  TransactionDetails(
+    aggregatorId: 'yagout',
+    merchantId: '<MERCHANT_ID>',
+    orderNumber: 'ORDER_${DateTime.now().millisecondsSinceEpoch}',
+    amount: '1',
+    country: 'ETH',
+    currency: 'ETB',
+    transactionType: 'SALE',
+    successUrl: 'http://localhost:8080/success',
+    failureUrl: 'http://localhost:8080/failure',
+    channel: 'WEB',
+    isLoggedIn: 'Y',
+  ),
+  '<ENCRYPTION_KEY_BASE64>',
+);
+
+print(built.merchantRequestPlain);
+print(built.merchantRequest);
+print(built.hashInput);
+print(built.hashHex);
+print(built.hash);
+```
+
+## Render Auto-submit Form
+
+```dart
+final html = renderAutoSubmitForm(built);
+// Load HTML in your preferred WebView widget
+```
+
+## Notes
+
+- Keep the encryption key secure; consider server-side assembly in production.
+- Use UAT environment and test data.

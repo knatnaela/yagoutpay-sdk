@@ -1,0 +1,162 @@
+---
+title: 'Java SDK'
+description: 'Enterprise-ready Java SDK for YagoutPay integration'
+---
+
+## Overview
+
+The YagoutPay Java SDK provides enterprise-grade integration capabilities for Java applications. Built with Java 17+ and optimized for Spring Boot applications with comprehensive testing support.
+
+<CardGroup cols={2}>
+  <Card title="Enterprise Ready" icon="building">
+    Built for enterprise applications with Spring Boot support
+  </Card>
+  <Card title="Java 17+" icon="java">
+    Modern Java features with comprehensive type safety
+  </Card>
+</CardGroup>
+
+## Installation
+
+Add the YagoutPay SDK to your build configuration:
+
+### Gradle
+
+```kotlin
+dependencies {
+    implementation 'com.yagoutpay:sdk:0.1.0'
+}
+```
+
+### Maven
+
+```xml
+<dependency>
+    <groupId>com.yagoutpay</groupId>
+    <artifactId>sdk</artifactId>
+    <version>0.1.0</version>
+</dependency>
+```
+
+## Quick Start
+
+### Hosted Form Integration
+
+```java
+import com.yagoutpay.sdk.*;
+
+Client.Config cfg = new Client.Config();
+cfg.merchantId = "2025...";
+cfg.encryptionKey = "BASE64_32_BYTE_KEY";
+cfg.environment = Constants.Environment.UAT;
+Client client = new Client(cfg);
+
+Types.TransactionDetails details = Types.TransactionDetails.builder()
+    .aggregatorId("yagout")
+    .merchantId(cfg.merchantId)
+    .orderNumber("ORDER" + System.currentTimeMillis())
+    .amount("1.00")
+    .country("ETH")
+    .currency("ETB")
+    .transactionType("SALE")
+    .successUrl("http://localhost:3001/success")
+    .failureUrl("http://localhost:3001/failure")
+    .channel("WEB")
+    .build();
+
+Types.BuiltRequest built = client.build(details);
+// built.meId, built.merchantRequest, built.hash, built.actionUrl
+// Post these fields to built.actionUrl as application/x-www-form-urlencoded
+```
+
+### Direct API Integration
+
+```java
+Types.TransactionDetails details = Types.TransactionDetails.builder()
+    .aggregatorId("yagout")
+    .merchantId(cfg.merchantId)
+    .orderNumber("ORDER" + System.currentTimeMillis())
+    .amount("1.00")
+    .country("ETH")
+    .currency("ETB")
+    .transactionType("SALE")
+    .successUrl("")
+    .failureUrl("")
+    .channel("API")
+    .customerMobile("0912345678")
+    .build();
+
+Types.ApiRequestResult result = client.sendApi(details, /* endpoint */ null, /* decryptResponse */ true);
+System.out.println(result.endpoint);
+System.out.println(result.raw.status);
+System.out.println(result.decryptedResponse); // may be null if decryption fails
+```
+
+## API Reference
+
+### Core Classes
+
+<AccordionGroup>
+  <Accordion title="Client">
+    Main SDK client for building requests and sending API calls.
+    
+    **Constructor:**
+    ```java
+    Client client = new Client(config);
+    ```
+    
+    **Methods:**
+    - `build(details)` - Build hosted form request
+    - `sendApi(details, endpoint, decryptResponse)` - Send direct API request
+  </Accordion>
+  
+  <Accordion title="Client.Config">
+    Configuration class for SDK client.
+    
+    **Properties:**
+    - `merchantId`: Your merchant ID
+    - `encryptionKey`: Base64-encoded encryption key
+    - `environment`: UAT or PRODUCTION
+  </Accordion>
+  
+  <Accordion title="Types.TransactionDetails">
+    Builder pattern class for transaction parameters.
+    
+    **Required Fields:**
+    - `aggregatorId`: Always "yagout"
+    - `merchantId`: Your merchant ID
+    - `orderNumber`: Unique order identifier
+    - `amount`: Transaction amount
+    - `country`: Country code (e.g., "ETH")
+    - `currency`: Currency code (e.g., "ETB")
+    - `transactionType`: "SALE" or "AUTHORIZE"
+    - `successUrl`: Success callback URL
+    - `failureUrl`: Failure callback URL
+    - `channel`: "WEB" or "API"
+  </Accordion>
+</AccordionGroup>
+
+### Response Types
+
+<AccordionGroup>
+  <Accordion title="BuiltRequest">
+    Response from hosted form request building.
+    
+    **Properties:**
+    - `meId`: Merchant ID
+    - `merchantRequest`: Encrypted request
+    - `hash`: Encrypted hash
+    - `actionUrl`: Gateway action URL
+  </Accordion>
+  
+  <Accordion title="ApiRequestResult">
+    Response from direct API calls.
+    
+    **Properties:**
+    - `endpoint`: API endpoint used
+    - `raw`: Raw HTTP response
+    - `decryptedResponse`: Decrypted response (if successful)
+  </Accordion>
+</AccordionGroup>
+
+<!-- Trimmed to SDK-only usage. Removed framework-specific integration, testing, and app config. -->
