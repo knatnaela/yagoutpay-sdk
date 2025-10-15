@@ -52,13 +52,13 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/yagoutpay/yagoutpay-sdk",
+          "href": "https://github.com/knatnaela/yagoutpay-sdk",
           "icon": "github"
         },
         {
-          "anchor": "Discord",
-          "href": "https://discord.gg/yagoutpay",
-          "icon": "discord"
+          "anchor": "Telegram",
+          "href": "https://t.me/yagoutpaydev",
+          "icon": "telegram"
         }
       ]
     }
@@ -95,7 +95,7 @@
   "footer": {
     "socials": {
       "twitter": "https://twitter.com/yagoutpay",
-      "github": "https://github.com/yagoutpay",
+      "github": "https://github.com/knatnaela/yagoutpay-sdk",
       "linkedin": "https://linkedin.com/company/yagoutpay"
     }
   }
