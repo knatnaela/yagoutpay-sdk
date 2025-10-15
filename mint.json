@@ -93,10 +93,7 @@
             "mode": "simple"
         }
     },
-    "redirects": [
-        {
-            "source": "/",
-            "destination": "/introduction"
-        }
-    ]
+    "redirects": {
+        "/": "/introduction"
+    }
 }
