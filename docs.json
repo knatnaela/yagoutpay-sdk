@@ -41,17 +41,17 @@
           {
             "group": "Integration",
             "pages": [
-              "integration/hosted-form",
-              "integration/direct-api",
-              "integration/payment-links"
+              "docs/integration/hosted-form",
+              "docs/integration/direct-api",
+              "docs/integration/payment-links"
             ]
           },
           {
             "group": "Examples",
             "pages": [
-              "examples/typescript-demo",
-              "examples/flutter-demo",
-              "examples/java-demo"
+              "docs/examples/typescript-demo",
+              "docs/examples/flutter-demo",
+              "docs/examples/java-demo"
             ]
           }
         ]
