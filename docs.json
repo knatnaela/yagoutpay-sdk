@@ -13,6 +13,15 @@
         "tab": "Documentation",
         "groups": [
           {
+            "group": "API Reference",
+            "openapi": "openapi.yaml",
+            "pages": [
+              "POST /api/send",
+              "POST /links/dynamic",
+              "POST /links/static"
+            ]
+          },
+          {
             "group": "Get Started",
             "pages": [
               "docs/introduction",
@@ -70,7 +79,15 @@
   "favicon": "/logo/favicon.png",
   "api": {
     "playground": {
-      "display": "simple"
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": [
+        "curl",
+        "javascript"
+      ],
+      "defaults": "required",
+      "prefill": true
     },
     "mdx": {
       "server": "https://checkout.yagoutpay.com",

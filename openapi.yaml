@@ -1,0 +1,131 @@
+openapi: 3.0.3
+info:
+  title: YagoutPay Dev Proxy
+  version: "1.0.0"
+servers:
+  - url: https://ratings-vote-agrees-ships.trycloudflare.com
+components:
+  schemas:
+    DirectApiPlain:
+      type: object
+      required: [cart, mobile]
+      properties:
+        cart:
+          type: array
+          description: Items to compute amount (demo-only)
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              qty:
+                type: integer
+                minimum: 1
+        email:
+          type: string
+          format: email
+        mobile:
+          type: string
+          description: Customer mobile required for API flow
+        pgOptionId:
+          type: string
+          description: Demo payment method option id
+    PaymentLinkDynamicPlain:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+          example: "500"
+        order:
+          type: string
+          description: Defaults to ORDER_<timestamp> if omitted
+        product:
+          type: string
+          example: "Custom Payment"
+        mobile:
+          type: string
+        expiry:
+          type: string
+          example: "2025-12-31"
+        email:
+          type: string
+          format: email
+    PaymentLinkStaticPlain:
+      type: object
+      properties:
+        amount:
+          type: string
+        product:
+          type: string
+        mobile:
+          type: string
+        email:
+          type: string
+          format: email
+    ProxyResponse:
+      type: object
+      additionalProperties: true
+paths:
+  /api/send:
+    post:
+      summary: Direct API
+      description: Accepts amount and mobile; uses default payment method
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, mobile]
+              properties:
+                amount:
+                  type: string
+                  example: "1.00"
+                mobile:
+                  type: string
+                  example: "0912345678"
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProxyResponse'
+  /links/dynamic:
+    post:
+      summary: Payment Link (Dynamic)
+      description: Accepts plain inputs and creates a dynamic payment link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentLinkDynamicPlain'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProxyResponse'
+  /links/static:
+    post:
+      summary: Payment Link (Static)
+      description: Accepts plain inputs and creates a static payment link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentLinkStaticPlain'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProxyResponse'

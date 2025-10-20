@@ -536,6 +536,54 @@ app.post('/api/send', async (req: express.Request, res: express.Response) => {
   }
 });
 
+// Simplified Direct API (amount-only) proxy for Playground
+app.post('/api/send-simple', async (req: express.Request, res: express.Response) => {
+  try {
+    const amount = String(req.body.amount || '').trim();
+    const mobile = String(req.body.mobile || '').trim();
+    const email = String(req.body.email || '').trim();
+    if (!amount) {
+      return res.status(400).json({ success: false, error: 'amount is required' });
+    }
+    if (!mobile) {
+      return res.status(400).json({ success: false, error: 'mobile is required' });
+    }
+
+    const order_no = `ORDER${Date.now()}`;
+
+    const details = {
+      aggregatorId: 'yagout',
+      orderNumber: order_no,
+      amount,
+      country: 'ETH',
+      currency: 'ETB',
+      transactionType: 'SALE',
+      customerEmail: email,
+      customerMobile: mobile,
+      // Use default pg_details so users don't need to choose
+      pgId: API_DEFAULTS.pgId,
+      paymode: API_DEFAULTS.paymode,
+      schemeId: API_DEFAULTS.schemeId,
+      walletType: API_DEFAULTS.walletType,
+      successUrl: '',
+      failureUrl: '',
+    } as const;
+
+    const result = await sendApiIntegration(
+      { merchantId: MERCHANT_ID, ...details, channel: 'API' },
+      MERCHANT_KEY_API,
+      { fetchImpl: loggedFetch as unknown as typeof fetch }
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const e = err as Error & { cause?: unknown };
+    // eslint-disable-next-line no-console
+    console.error('[demo] API simple request failed:', e.name, e.message);
+    return res.status(400).json({ success: false, error: (err as Error).message });
+  }
+});
+
 // Payment Link (Dynamic)
 app.post('/links/dynamic', async (req: express.Request, res: express.Response) => {
   try {
